@@ -18,7 +18,7 @@
 #*********************** CONFIG ***********************#
 #******************************************************#
 
-IP="fritz.box"
+IP="fritz.box" #IP address can also be used
 USER="YourUserAccount"
 PW="YourPassword"
 
