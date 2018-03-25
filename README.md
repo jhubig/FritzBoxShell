@@ -6,7 +6,7 @@
 ## Introduction
 
 The script allows you to control/check your FritzBox from the terminal with a shell script. It is planned to add more functions in the future.
-The shell script uses cURL to create an SOAP request based on the TR-064 protocol to talk to the AVM Fritz!Box.
+The shell script uses cURL to create an SOAP request based on the TR-064 protocol to talk to the AVM Fritz!Box and AVM Fritz!Repeater.
 
 Please raise an issue with your function you would like to add.
 
@@ -14,9 +14,12 @@ This package was tested on
 * Fritz!Box 7490, with firmware version `6.93`
 * Fritz!Repeater 310, with firmware version `6.92`
 
-##External Links
+## External Links
+
+Here you can find more information on TR-064 protocol and the available actions in your Fritz!Box or Fritz!Repeater.
 
 * http://fritz.box:49000/tr64desc.xml
+* http://fritz.repeater:49000/tr64desc.xml
 * https://wiki.fhem.de/wiki/FRITZBOX#TR-064
 * https://avm.de/service/schnittstellen/
 
