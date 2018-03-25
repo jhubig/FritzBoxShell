@@ -65,6 +65,3 @@ Example (Deactivates the 5Ghz on your FritzBox):
 
 * Script will only work if device from where the script is called is in the same network (same WiFi, LAN or VPN connection)
 * Not possible to switch ON the Fritz!Repeater after it has been switched OFF. This only works on Fritz!Box if still 2,4Ghz or 5Ghz is active or VPN connection to Fritz!Box is established
-
-## License
-TBD
