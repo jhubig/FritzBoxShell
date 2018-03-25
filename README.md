@@ -3,9 +3,20 @@
 
 # FritzBoxShell
 
-## Getting Started
+## Introduction
+
+The script allows you to control/check your FritzBox from the terminal with a shell script. It is planned to add more functions in the future.
+The shell script uses cURL to create an SOAP request based on the TR-064 protocol to talk to the AVM Fritz!Box.
+
+Please raise an issue with your function you would like to add.
 
 This package was tested on Fritz!Box 7490, with firmware version `6.93`.
+
+##External Links
+
+* http://fritz.box:49000/tr64desc.xml
+* https://wiki.fhem.de/wiki/FRITZBOX#TR-064
+* https://avm.de/service/schnittstellen/
 
 ## Installing
 
@@ -27,11 +38,23 @@ Just start the script and add the action and parameters:
 ./fritzBoxShell.sh <ACTION> <PARAMETER>
 ```
 
+Example (Deactivates the 5Ghz on your FritzBox):
+
+```
+./fritzBoxShell.sh WLAN_5G 0
+```
+
 | Action | Parameter | Description |
 | --- | --- | --- |
 | WLAN_2G | 0 or 1 | Switching ON or OFF the 2,4 Ghz WiFi |
 | WLAN_5G | 0 or 1 | Switching ON or OFF the 5 Ghz WiFi |
 | WLAN | 0 or 1 | Switching ON or OFF the 2,4Ghz and 5 Ghz WiFi |
+| REPEATER | 0 | Switching OFF the WiFi of the Repeater |
+
+Notes:
+
+* Script will only work if device from where the script is called is in the same network (same WiFi, LAN or VPN connection)
+* Not possible to switch ON the Fritz!Repeater after it has been switched OFF. This only works on Fritz!Box if still 2,4Ghz or 5Ghz is active or VPN connection to Fritz!Box is established
 
 ## License
 TBD
