@@ -69,11 +69,22 @@ RepeaterWLANstate() {
 
 	# Building the inputs for the SOAP Action
 
-		location="/upnp/control/wlanconfig1"
-		uri="urn:dslforum-org:service:WLANConfiguration:1"
-		action='SetEnable'
-		echo "Sending Repeater WLAN $1"; curl -k -m 5 --anyauth -u "$RepeaterUSER:$RepeaterPW" http://$RepeaterIP:49000$location -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewEnable>$option2</NewEnable></u:$action></s:Body></s:Envelope>" #-s > /dev/null
+	location="/upnp/control/wlanconfig1"
+	uri="urn:dslforum-org:service:WLANConfiguration:1"
+	action='SetEnable'
+	echo "Sending Repeater WLAN $1"; curl -k -m 5 --anyauth -u "$RepeaterUSER:$RepeaterPW" http://$RepeaterIP:49000$location -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewEnable>$option2</NewEnable></u:$action></s:Body></s:Envelope>" -s > /dev/null
 
+}
+
+Reboot() {
+
+	# Building the inputs for the SOAP Action
+
+	location="/upnp/control/deviceconfig"
+	uri="urn:dslforum-org:service:DeviceConfig:1"
+	action='Reboot'
+	if [[ "$option2" = "Box" ]]; then echo "Sending Reboot command to $1"; curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" http://$BoxIP:49000$location -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" -s > /dev/null; fi
+	if [[ "$option2" = "Repeater" ]]; then echo "Sending Reboot command to $1"; curl -k -m 5 --anyauth -u "$RepeaterUSER:$RepeaterPW" http://$RepeaterIP:49000$location -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" -s > /dev/null; fi
 }
 
 # Check if an argument was supplied for shell script
@@ -86,10 +97,12 @@ then
 fi
 
 #If argument was provided, check which function to be called
-if [ "$1" = "WLAN_2G" ] || [ "$1" = "WLAN_5G" ] || [ "$1" = "WLAN" ]; then
-	if [ "$2" = "1" ]; then WLANstate "ON"; fi
-	if [ "$2" = "0" ]; then WLANstate "OFF"; fi
-elif [ "$1" = "REPEATER" ]; then
-	if [ "$2" = "1" ]; then RepeaterWLANstate "ON"; fi # Usually this will not work because there is no connection possible to the Fritz!Repeater as long as WiFi is OFF
-	if [ "$2" = "0" ]; then RepeaterWLANstate "OFF"; fi
+if [ "$option1" = "WLAN_2G" ] || [ "$option1" = "WLAN_5G" ] || [ "$option1" = "WLAN" ]; then
+	if [ "$option2" = "1" ]; then WLANstate "ON"; fi
+	if [ "$option2" = "0" ]; then WLANstate "OFF"; fi
+elif [ "$option1" = "REPEATER" ]; then
+	if [ "$option2" = "1" ]; then RepeaterWLANstate "ON"; fi # Usually this will not work because there is no connection possible to the Fritz!Repeater as long as WiFi is OFF
+	if [ "$option2" = "0" ]; then RepeaterWLANstate "OFF"; fi
+elif [ "$option1" = "REBOOT" ]; then
+	Reboot $option2
 fi
