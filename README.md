@@ -27,7 +27,7 @@ Just start the script and add the action and parameters:
 ```
 
 | Action | Parameter | Description |
-| --- | --- |
+| --- | --- | --- |
 | WLAN_2G | 0 or 1 | Switching ON or OFF the 2,4 Ghz WiFi |
 | WLAN_5G | 0 or 1 | Switching ON or OFF the 5 Ghz WiFi |
 | WLAN | 0 or 1 | Switching ON or OFF the 2,4Ghz and 5 Ghz WiFi |
