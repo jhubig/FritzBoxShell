@@ -5,6 +5,8 @@
 
 ![AVM_FRITZ_Labor_FRITZBox_7490-min.jpg](AVM_FRITZ_Labor_FRITZBox_7490-min.jpg?raw=true "AVM_FRITZ_Labor_FRITZBox_7490-min.jpg")
 
+(Image credit: https://avm.de/presse/pressefotos/?q=7490)
+
 ## Introduction
 
 The script allows you to control/check your FritzBox from the terminal with a shell script. It is planned to add more functions in the future.
