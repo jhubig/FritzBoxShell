@@ -1,6 +1,6 @@
 # FritzBoxShell
 
-[![GitHub release](https://img.shields.io/github/release/jhubig/fritzBoxShell.sh.svg?maxAge=1)]()
+[![GitHub release](https://img.shields.io/github/release/jhubig/FritzBoxShell.svg?maxAge=1)]()
 
 ## Getting Started
 
