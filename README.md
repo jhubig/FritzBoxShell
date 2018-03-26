@@ -1,5 +1,6 @@
 [![GitHub release](https://img.shields.io/github/release/jhubig/FritzBoxShell.svg?maxAge=1)]()
-[![GitHub downloads](https://img.shields.io/github/downloads/jhubig/FritzBoxShell/total.svg)]()
+[![Github All Releases](https://img.shields.io/github/downloads/jhubig/FritzBoxShell/total.svg)](https://github.com/jhubig/FritzBoxShell)
+
 
 # FritzBoxShell
 
