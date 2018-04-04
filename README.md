@@ -66,3 +66,9 @@ Example (Deactivates the 5Ghz on your FritzBox):
 
 * Script will only work if device from where the script is called is in the same network (same WiFi, LAN or VPN connection)
 * Not possible to switch ON the Fritz!Repeater after it has been switched OFF. This only works on Fritz!Box if still 2,4Ghz or 5Ghz is active or VPN connection to Fritz!Box is established
+
+### Example Use case
+
+Currently I'm using the script (located on my RaspberryPi which is always connected to my router via ethernet) combined with Workflow (https://itunes.apple.com/de/app/workflow/id915249334?mt=8) on my iPhone/iPad. Workflow offers the possibility to send SSH commands directly to your raspberry or to any other SSH capable device. After creating the workflow itself, I have added them to the Today Widget view for faster access.
+
+![iOS_Workflow_SSH.png](iOS_Workflow_SSH.png?raw=true "iOS_Workflow_SSH.png")
