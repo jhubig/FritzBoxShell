@@ -4,7 +4,7 @@
 
 # FritzBoxShell
 
-![AVM_FRITZ_Labor_FRITZBox_7490-min.jpg](AVM_FRITZ_Labor_FRITZBox_7490-min.jpg?raw=true "AVM_FRITZ_Labor_FRITZBox_7490-min.jpg")
+![AVM_FRITZ_Labor_FRITZBox_7490-min.jpg](img/AVM_FRITZ_Labor_FRITZBox_7490-min.jpg?raw=true "AVM_FRITZ_Labor_FRITZBox_7490-min.jpg")
 
 (Image credit: https://avm.de/presse/pressefotos/?q=7490)
 
@@ -71,4 +71,4 @@ Example (Deactivates the 5Ghz on your FritzBox):
 
 Currently I'm using the script (located on my RaspberryPi which is always connected to my router via ethernet) combined with Workflow (https://itunes.apple.com/de/app/workflow/id915249334?mt=8) on my iPhone/iPad. Workflow offers the possibility to send SSH commands directly to your raspberry or to any other SSH capable device. After creating the workflow itself, I have added them to the Today Widget view for faster access.
 
-![iOS_Workflow_SSH.png](iOS_Workflow_SSH.png?raw=true "iOS_Workflow_SSH.png")
+![iOS_Workflow_SSH.png](img/iOS_Workflow_SSH.png?raw=true "iOS_Workflow_SSH.png")
