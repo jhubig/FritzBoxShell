@@ -16,8 +16,10 @@ The shell script uses cURL to create an SOAP request based on the TR-064 protoco
 Please raise an issue with your function you would like to add.
 
 This package was tested on
-* Fritz!Box 7490, with firmware version `6.93`
-* Fritz!Repeater 310, with firmware version `6.92`
+* OK: Fritz!Box 7490, with firmware version `6.93`
+* NOK: Fritz!Box 7490, with firmware version `06.98-53696 BETA`
+  * Status check not working anymore. NewStatus field not updated. Stays "Disabled".
+* OK: Fritz!Repeater 310, with firmware version `6.92`
 
 ## External Links
 
