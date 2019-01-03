@@ -94,6 +94,14 @@ LANstate() {
 		readout
 }
 
+DSLstate() {
+		location="/igdupnp/control/wandslifconfig1"
+		uri="urn:dslforum-org:service:WANDSLInterfaceConfig:1"
+		action='GetInfo'
+
+		readout
+}
+
 
 WLANstate() {
 
@@ -163,6 +171,7 @@ DisplayArguments() {
 	echo "| WLAN_5G  | STATISTICS      | Statistics for the 5 Ghz WiFi easily digestable by telegraf          |"
 	echo "| WLAN     | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |"
 	echo "| LAN      | STATE           | Statistics for the LAN easily digestable by telegraf                 |"
+	echo "| DSL      | STATE           | Statistics for the DSL easily digestable by telegraf                 |"
 	echo "| REPEATER | 0               | Switching OFF the WiFi of the Repeater                               |"
 	echo "| REBOOT   | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater                           |"
 	echo "|----------|-----------------|----------------------------------------------------------------------|"
@@ -191,6 +200,10 @@ else
 		fi
 	elif [ "$option1" = "LAN" ]; then
 		if [ "$option2" = "STATE" ]; then LANstate "$option2";
+		else DisplayArguments
+		fi
+	elif [ "$option1" = "DSL" ]; then
+		if [ "$option2" = "STATE" ]; then DSLstate "$option2";
 		else DisplayArguments
 		fi
 	elif [ "$option1" = "REPEATER" ]; then
