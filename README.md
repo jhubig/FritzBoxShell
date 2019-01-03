@@ -5,10 +5,10 @@
 [![GitHub tag](https://img.shields.io/github/tag/elbosso/FritzBoxShell.svg)](https://GitHub.com/Naereen/StrapDown.js/tags/)
 [![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/)
 [![GitHub license](https://img.shields.io/github/license/elbosso/FritzBoxShell.svg)](https://github.com/elbosso/FritzBoxShell/blob/master/LICENSE)
-[![GitHub issues](https://img.shields.io/github/issues/elbosso/FritzBoxShell.svg)](https://GitHub.com/Naereen/StrapDown.js/issues/)
-[![GitHub issues-closed](https://img.shields.io/github/issues-closed/elbosso/FritzBoxShell.svg)](https://GitHub.com/Naereen/StrapDown.js/issues?q=is%3Aissue+is%3Aclosed)
+[![GitHub issues](https://img.shields.io/github/issues/elbosso/FritzBoxShell.svg)](https://GitHub.com/elbosso/FritzBoxShell/issues/)
+[![GitHub issues-closed](https://img.shields.io/github/issues-closed/elbosso/FritzBoxShell.svg)](https://GitHub.com/elbosso/FritzBoxShell/issues?q=is%3Aissue+is%3Aclosed)
 [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/elbosso/FritzBoxShell/issues)
-[![GitHub contributors](https://img.shields.io/github/contributors/elbosso/FritzBoxShell.svg)](https://GitHub.com/Naereen/StrapDown.js/graphs/contributors/)
+[![GitHub contributors](https://img.shields.io/github/contributors/elbosso/FritzBoxShell.svg)](https://GitHub.com/elbosso/FritzBoxShell/graphs/contributors/)
 [![Github All Releases](https://img.shields.io/github/downloads/elbosso/FritzBoxShell/total.svg)](https://github.com/elbosso/FritzBoxShell)
 
 
@@ -113,4 +113,51 @@ Currently I'm using the script (located on my RaspberryPi which is always connec
 ![iOS_Workflow_SSH.png](img/iOS_Workflow_SSH.png?raw=true "iOS_Workflow_SSH.png")
 
 ### Example Use with Telegraf
+Suppose, you want to visualize the overall Download Rate of your FritzBox: The way to go here is to use the Action IGDWAN with parameter STATE. It gives (for example) this output:
+ 
+```
+NewByteSendRate 265
+NewByteReceiveRate 17
+NewPacketSendRate 0
+NewPacketReceiveRate 0
+NewTotalBytesSent 0
+NewTotalBytesReceived 0
+NewAutoDisconnectTime 0
+NewIdleDisconnectTime 0
+NewDNSServer1 83.169.186.33
+NewDNSServer2 83.169.186.97
+NewVoipDNSServer1 83.169.186.33
+NewVoipDNSServer2 83.169.186.97
+NewUpnpControlEnabled 0
+NewRoutedBridgedModeBoth 1
+
+```
+
+The important line here is the one with `NewByteReceiveRate` in it. If we augment the script execution with some pipe magic, we get exactly
+the Download Rate value:
+
+```
+BoxUSER=munin BoxPW=munin1! /opt/telegraf/FritzBoxShell/fritzBoxShell.sh IGDWAN STATE|grep NewByteReceiveRate|cut -d ' ' -f 2
+```
+
+Now - how to get this measurement into Telegraf? Well, Telegraf has an `exec` input that allows us to inject one measurement with a specific value. It looks like [this](https://github.com/influxdata/telegraf/tree/master/plugins/inputs/exec):
+```
+[[inputs.exec]]
+  commands = ["<some command>"]
+  name_override = "fritzbox_byte_receive_rate"
+  data_format = "value"
+  data_type = "integer"
+```
+
+Now for the ugly truth: we can not use the command shown earlier for where it says `some command` - we must instead use some simple bash logic:
+```
+[[inputs.exec]]
+  commands = ["/bin/bash -c \"BoxUSER=munin BoxPW=munin1! /opt/telegraf/FritzBoxShell/fritzBoxShell.sh IGDWAN STATE|grep NewByteReceiveRate|cut -d ' ' -f 2\"" ]
+  name_override = "fritzbox_byte_receive_rate"
+  data_format = "value"
+  data_type = "integer"
+```
+
+#### Note
+Data with huge absolute values probably dont fint into type `integer` - in this case, `long` is the way to go...
 
