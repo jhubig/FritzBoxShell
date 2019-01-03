@@ -102,6 +102,35 @@ DSLstate() {
 		readout
 }
 
+WANstate() {
+		location="/upnp/control/wancommonifconfig1"
+		uri="urn:dslforum-org:service:WANCommonInterfaceConfig:1"
+		action='GetTotalBytesReceived'
+
+		readout
+
+		action='GetTotalBytesSent'
+
+		readout
+
+		action='GetTotalPacketsReceived'
+
+		readout
+
+		action='GetTotalPacketsSent'
+
+		readout
+
+		action='GetCommonLinkProperties'
+
+		readout
+
+		#action='GetInfo'
+
+		#readout
+
+}
+
 
 WLANstate() {
 
@@ -204,6 +233,10 @@ else
 		fi
 	elif [ "$option1" = "DSL" ]; then
 		if [ "$option2" = "STATE" ]; then DSLstate "$option2";
+		else DisplayArguments
+		fi
+	elif [ "$option1" = "WAN" ]; then
+		if [ "$option2" = "STATE" ]; then WANstate "$option2";
 		else DisplayArguments
 		fi
 	elif [ "$option1" = "REPEATER" ]; then
