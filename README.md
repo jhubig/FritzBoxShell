@@ -15,11 +15,17 @@ The shell script uses cURL to create an SOAP request based on the TR-064 protoco
 
 Please raise an issue with your function you would like to add.
 
-This package was tested on
+This package (before the fork) was tested on
 * OK: Fritz!Box 7490, with firmware version `6.93`
 * NOK: Fritz!Box 7490, with firmware version `06.98-53696 BETA`
   * Status check not working anymore. NewStatus field not updated. Stays "Disabled".
 * OK: Fritz!Repeater 310, with firmware version `6.92`
+
+After the fork, it has solely been tested on
+* FRITZ!Box 6490 Cable (kdg) with FRITZ!OS: 06.87 
+  * DSL not working
+  * WAN partly working (rates are always 0)
+  * WANDSLLINK not working
 
 ## External Links
 
@@ -42,6 +48,19 @@ Copy the fritzBoxShell.sh to your desired location (In my personal use case, I p
 ```
 chmod 755 fritzBoxShell.sh
 ```
+## Configuration
+
+The file fritzBoxShellConfig.sh contains all Information pertaining to endpoints and credentials. You can
+choose to adjust it or you can choose to give this information as environment variables at the start of the script.
+If you choose to use environment variables, you need not comment or delete anything in fritzBoxShellConfig.sh - 
+environment variables alway take precedence over the contents of fritzBoxShellConfig.sh.
+
+Calling fritzBoxShell.sh using environment variables could look like this:
+
+```
+BoxUSER=YourUser BoxPW=YourPassword ./fritzBoxShell.sh <ACTION> <PARAMETER>
+```
+
 ## Usage
 
 Just start the script and add the action and parameters:
@@ -59,8 +78,14 @@ Example (Deactivates the 5Ghz on your FritzBox):
 | Action | Parameter | Description |
 | --- | --- | --- |
 | WLAN_2G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi |
+| WLAN_2G  | STATISTICS      | Statistics for the 2,4 Ghz WiFi easily digestable by telegraf        |
 | WLAN_5G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 5 Ghz WiFi |
+| WLAN_5G  | STATISTICS      | Statistics for the 5 Ghz WiFi easily digestable by telegraf          |
 | WLAN | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |
+| LAN | STATE | Statistics for the LAN easily digestable by telegraf |
+| DSL | STATE | Statistics for the DSL easily digestable by telegraf |
+| WAN | STATE | Statistics for the WAN easily digestable by telegraf |
+| LINK | STATE | Statistics for the WAN DSL LINK easily digestable by telegraf |
 | REPEATER | 0 | Switching OFF the WiFi of the Repeater |
 | REBOOT | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater |
 
