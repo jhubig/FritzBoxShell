@@ -131,6 +131,14 @@ WANstate() {
 
 }
 
+WANDSLLINKstate() {
+		location="/upnp/control/wandsllinkconfig1"
+		uri="urn:dslforum-org:service:WANDSLLinkConfig:1"
+		action='GetStatistics'
+
+		readout
+
+}
 
 WLANstate() {
 
@@ -201,6 +209,8 @@ DisplayArguments() {
 	echo "| WLAN     | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |"
 	echo "| LAN      | STATE           | Statistics for the LAN easily digestable by telegraf                 |"
 	echo "| DSL      | STATE           | Statistics for the DSL easily digestable by telegraf                 |"
+	echo "| WAN      | STATE           | Statistics for the WAN easily digestable by telegraf                 |"
+	echo "| LINK     | STATE           | Statistics for the WAN DSL LINK easily digestable by telegraf        |"
 	echo "| REPEATER | 0               | Switching OFF the WiFi of the Repeater                               |"
 	echo "| REBOOT   | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater                           |"
 	echo "|----------|-----------------|----------------------------------------------------------------------|"
@@ -237,6 +247,10 @@ else
 		fi
 	elif [ "$option1" = "WAN" ]; then
 		if [ "$option2" = "STATE" ]; then WANstate "$option2";
+		else DisplayArguments
+		fi
+	elif [ "$option1" = "LINK" ]; then
+		if [ "$option2" = "STATE" ]; then WANDSLLINKstate "$option2";
 		else DisplayArguments
 		fi
 	elif [ "$option1" = "REPEATER" ]; then
