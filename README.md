@@ -97,6 +97,7 @@ Example (Deactivates the 5Ghz on your FritzBox):
 | DSL | STATE | Statistics for the DSL easily digestable by telegraf |
 | WAN | STATE | Statistics for the WAN easily digestable by telegraf |
 | LINK | STATE | Statistics for the WAN DSL LINK easily digestable by telegraf |
+| IGDWAN | STATE | Statistics for the WAN LINK easily digestable by telegraf |
 | REPEATER | 0 | Switching OFF the WiFi of the Repeater |
 | REBOOT | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater |
 

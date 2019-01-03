@@ -140,6 +140,15 @@ WANDSLLINKstate() {
 
 }
 
+IGDWANstate() {
+		location="/igdupnp/control/WANCommonIFC1"
+		uri="urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1"
+		action='GetAddonInfos'
+
+		readout
+
+}
+
 WLANstate() {
 
 	# Building the inputs for the SOAP Action based on which WiFi to switch ON/OFF
@@ -211,6 +220,7 @@ DisplayArguments() {
 	echo "| DSL      | STATE           | Statistics for the DSL easily digestable by telegraf                 |"
 	echo "| WAN      | STATE           | Statistics for the WAN easily digestable by telegraf                 |"
 	echo "| LINK     | STATE           | Statistics for the WAN DSL LINK easily digestable by telegraf        |"
+	echo "| IGDWAN   | STATE           | Statistics for the WAN LINK easily digestable by telegraf            |"
 	echo "| REPEATER | 0               | Switching OFF the WiFi of the Repeater                               |"
 	echo "| REBOOT   | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater                           |"
 	echo "|----------|-----------------|----------------------------------------------------------------------|"
@@ -251,6 +261,10 @@ else
 		fi
 	elif [ "$option1" = "LINK" ]; then
 		if [ "$option2" = "STATE" ]; then WANDSLLINKstate "$option2";
+		else DisplayArguments
+		fi
+	elif [ "$option1" = "IGDWAN" ]; then
+		if [ "$option2" = "STATE" ]; then IGDWANstate "$option2";
 		else DisplayArguments
 		fi
 	elif [ "$option1" = "REPEATER" ]; then
