@@ -89,15 +89,16 @@ Example (Deactivates the 5Ghz on your FritzBox):
 | Action | Parameter | Description |
 | --- | --- | --- |
 | WLAN_2G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi |
-| WLAN_2G  | STATISTICS      | Statistics for the 2,4 Ghz WiFi easily digestable by telegraf        |
+| WLAN_2G  | STATISTICS      | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf        |
 | WLAN_5G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 5 Ghz WiFi |
-| WLAN_5G  | STATISTICS      | Statistics for the 5 Ghz WiFi easily digestable by telegraf          |
+| WLAN_5G  | STATISTICS      | Statistics for the 5 Ghz WiFi easily digestible by telegraf          |
 | WLAN | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |
-| LAN | STATE | Statistics for the LAN easily digestable by telegraf |
-| DSL | STATE | Statistics for the DSL easily digestable by telegraf |
-| WAN | STATE | Statistics for the WAN easily digestable by telegraf |
-| LINK | STATE | Statistics for the WAN DSL LINK easily digestable by telegraf |
-| IGDWAN | STATE | Statistics for the WAN LINK easily digestable by telegraf |
+| LAN | STATE | Statistics for the LAN easily digestible by telegraf |
+| DSL | STATE | Statistics for the DSL easily digestible by telegraf |
+| WAN | STATE | Statistics for the WAN easily digestible by telegraf |
+| LINK | STATE | Statistics for the WAN DSL LINK easily digestible by telegraf |
+| IGDWAN | STATE | Statistics for the WAN LINK easily digestible by telegraf |
+| IGDDSL | STATE | Statistics for the DSL LINK easily digestible by telegraf |
 | REPEATER | 0 | Switching OFF the WiFi of the Repeater |
 | REBOOT | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater |
 

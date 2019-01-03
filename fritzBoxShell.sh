@@ -149,6 +149,35 @@ IGDWANstate() {
 
 }
 
+IGDDSLLINKstate() {
+		location="/igdupnp/control/WANDSLLinkC1"
+		uri="urn:schemas-upnp-org:service:WANDSLLinkConfig:1"
+		action='GetDSLLinkInfo'
+
+		readout
+
+		action='GetAutoConfig'
+
+		readout
+
+		action='GetModulationType'
+
+		readout
+
+		action='GetDestinationAddress'
+
+		readout
+
+		action='GetATMEncapsulation'
+
+		readout
+
+		action='GetFCSPreserved'
+
+		readout
+
+}
+
 WLANstate() {
 
 	# Building the inputs for the SOAP Action based on which WiFi to switch ON/OFF
@@ -212,15 +241,16 @@ DisplayArguments() {
 	echo "|  Action  | Parameter       | Description                                                          |"
 	echo "|----------|-----------------|----------------------------------------------------------------------|"
 	echo "| WLAN_2G  | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi          |"
-	echo "| WLAN_2G  | STATISTICS      | Statistics for the 2,4 Ghz WiFi easily digestable by telegraf        |"
+	echo "| WLAN_2G  | STATISTICS      | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf        |"
 	echo "| WLAN_5G  | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 5 Ghz WiFi            |"
-	echo "| WLAN_5G  | STATISTICS      | Statistics for the 5 Ghz WiFi easily digestable by telegraf          |"
+	echo "| WLAN_5G  | STATISTICS      | Statistics for the 5 Ghz WiFi easily digestible by telegraf          |"
 	echo "| WLAN     | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |"
-	echo "| LAN      | STATE           | Statistics for the LAN easily digestable by telegraf                 |"
-	echo "| DSL      | STATE           | Statistics for the DSL easily digestable by telegraf                 |"
-	echo "| WAN      | STATE           | Statistics for the WAN easily digestable by telegraf                 |"
-	echo "| LINK     | STATE           | Statistics for the WAN DSL LINK easily digestable by telegraf        |"
-	echo "| IGDWAN   | STATE           | Statistics for the WAN LINK easily digestable by telegraf            |"
+	echo "| LAN      | STATE           | Statistics for the LAN easily digestible by telegraf                 |"
+	echo "| DSL      | STATE           | Statistics for the DSL easily digestible by telegraf                 |"
+	echo "| WAN      | STATE           | Statistics for the WAN easily digestible by telegraf                 |"
+	echo "| LINK     | STATE           | Statistics for the WAN DSL LINK easily digestible by telegraf        |"
+	echo "| IGDWAN   | STATE           | Statistics for the WAN LINK easily digestible by telegraf            |"
+	echo "| IGDDSL   | STATE           | Statistics for the DSL LINK easily digestible by telegraf            |"
 	echo "| REPEATER | 0               | Switching OFF the WiFi of the Repeater                               |"
 	echo "| REBOOT   | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater                           |"
 	echo "|----------|-----------------|----------------------------------------------------------------------|"
@@ -265,6 +295,10 @@ else
 		fi
 	elif [ "$option1" = "IGDWAN" ]; then
 		if [ "$option2" = "STATE" ]; then IGDWANstate "$option2";
+		else DisplayArguments
+		fi
+	elif [ "$option1" = "IGDDSL" ]; then
+		if [ "$option2" = "STATE" ]; then IGDDSLLINKstate "$option2";
 		else DisplayArguments
 		fi
 	elif [ "$option1" = "REPEATER" ]; then
