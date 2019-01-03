@@ -137,7 +137,7 @@ The important line here is the one with `NewByteReceiveRate` in it. If we augmen
 the Download Rate value:
 
 ```
-BoxUSER=munin BoxPW=munin1! /opt/telegraf/FritzBoxShell/fritzBoxShell.sh IGDWAN STATE|grep NewByteReceiveRate|cut -d ' ' -f 2
+BoxUSER=YourUser BoxPW=YourPassword /opt/telegraf/FritzBoxShell/fritzBoxShell.sh IGDWAN STATE|grep NewByteReceiveRate|cut -d ' ' -f 2
 ```
 
 Now - how to get this measurement into Telegraf? Well, Telegraf has an `exec` input that allows us to inject one measurement with a specific value. It looks like [this](https://github.com/influxdata/telegraf/tree/master/plugins/inputs/exec):
@@ -152,12 +152,12 @@ Now - how to get this measurement into Telegraf? Well, Telegraf has an `exec` in
 Now for the ugly truth: we can not use the command shown earlier for where it says `some command` - we must instead use some simple bash logic:
 ```
 [[inputs.exec]]
-  commands = ["/bin/bash -c \"BoxUSER=munin BoxPW=munin1! /opt/telegraf/FritzBoxShell/fritzBoxShell.sh IGDWAN STATE|grep NewByteReceiveRate|cut -d ' ' -f 2\"" ]
+  commands = ["/bin/bash -c \"BoxUSER=YourUser BoxPW=YourPassword /opt/telegraf/FritzBoxShell/fritzBoxShell.sh IGDWAN STATE|grep NewByteReceiveRate|cut -d ' ' -f 2\"" ]
   name_override = "fritzbox_byte_receive_rate"
   data_format = "value"
   data_type = "integer"
 ```
 
 #### Note
-Data with huge absolute values probably dont fint into type `integer` - in this case, `long` is the way to go...
+Data with huge absolute values probably dont fit into type `integer` - in this case, `long` is the way to go...
 
