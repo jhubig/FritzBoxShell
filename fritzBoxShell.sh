@@ -19,19 +19,8 @@
 # https://wiki.fhem.de/wiki/FRITZBOX#TR-064
 # https://avm.de/service/schnittstellen/
 
-#******************************************************#
-#*********************** CONFIG ***********************#
-#******************************************************#
-
-# Fritz!Box Config
-BoxIP="fritz.box"
-BoxUSER="YourUser"
-BoxPW="YourPassword"
-
-# Fritz!Repeater Config
-RepeaterIP="fritz.repeater"
-RepeaterUSER="" #Usually on Fritz!Repeater no User is existing. Can be left empty.
-RepeaterPW="YourPassword"
+DIRECTORY=$(cd `dirname $0` && pwd)
+source $DIRECTORY/fritzBoxShellConfig.sh
 
 #******************************************************#
 #*********************** SCRIPT ***********************#
