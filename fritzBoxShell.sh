@@ -178,6 +178,51 @@ IGDDSLLINKstate() {
 
 }
 
+IGDIPstate() {
+		location="/igdupnp/control/WANIPConn1"
+		uri="urn:schemas-upnp-org:service:WANIPConnection:1"
+		action='GetConnectionTypeInfo'
+
+		readout
+
+		action='GetAutoDisconnectTime'
+
+		readout
+
+		action='GetIdleDisconnectTime'
+
+		readout
+
+		action='GetStatusInfo'
+
+		readout
+
+		action='GetNATRSIPStatus'
+
+		readout
+
+		action='GetExternalIPAddress'
+
+		readout
+
+		action='X_AVM_DE_GetExternalIPv6Address'
+
+		readout
+
+		action='X_AVM_DE_GetIPv6Prefix'
+
+		readout
+
+		action='X_AVM_DE_GetDNSServer'
+
+		readout
+
+		action='X_AVM_DE_GetIPv6DNSServer'
+
+		readout
+
+}
+
 WLANstate() {
 
 	# Building the inputs for the SOAP Action based on which WiFi to switch ON/OFF
@@ -251,6 +296,7 @@ DisplayArguments() {
 	echo "| LINK     | STATE           | Statistics for the WAN DSL LINK easily digestible by telegraf        |"
 	echo "| IGDWAN   | STATE           | Statistics for the WAN LINK easily digestible by telegraf            |"
 	echo "| IGDDSL   | STATE           | Statistics for the DSL LINK easily digestible by telegraf            |"
+	echo "| IGDIP    | STATE           | Statistics for the DSL IP easily digestible by telegraf              |"
 	echo "| REPEATER | 0               | Switching OFF the WiFi of the Repeater                               |"
 	echo "| REBOOT   | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater                           |"
 	echo "|----------|-----------------|----------------------------------------------------------------------|"
@@ -299,6 +345,10 @@ else
 		fi
 	elif [ "$option1" = "IGDDSL" ]; then
 		if [ "$option2" = "STATE" ]; then IGDDSLLINKstate "$option2";
+		else DisplayArguments
+		fi
+	elif [ "$option1" = "IGDIP" ]; then
+		if [ "$option2" = "STATE" ]; then IGDIPstate "$option2";
 		else DisplayArguments
 		fi
 	elif [ "$option1" = "REPEATER" ]; then
