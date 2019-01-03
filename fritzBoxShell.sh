@@ -86,6 +86,15 @@ WLAN5statistics() {
 		echo "NewGHz 5"
 }
 
+LANstate() {
+		location="/upnp/control/lanethernetifcfg"
+		uri="urn:dslforum-org:service:LANEthernetInterfaceConfig:1"
+		action='GetStatistics'
+
+		readout
+}
+
+
 WLANstate() {
 
 	# Building the inputs for the SOAP Action based on which WiFi to switch ON/OFF
@@ -153,6 +162,7 @@ DisplayArguments() {
 	echo "| WLAN_5G  | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 5 Ghz WiFi            |"
 	echo "| WLAN_5G  | STATISTICS      | Statistics for the 5 Ghz WiFi easily digestable by telegraf          |"
 	echo "| WLAN     | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |"
+	echo "| LAN      | STATE           | Statistics for the LAN easily digestable by telegraf                 |"
 	echo "| REPEATER | 0               | Switching OFF the WiFi of the Repeater                               |"
 	echo "| REBOOT   | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater                           |"
 	echo "|----------|-----------------|----------------------------------------------------------------------|"
@@ -177,6 +187,10 @@ else
 			elif [ "$option1" = "WLAN_5G" ]; then WLAN5statistics;
 			else DisplayArguments
 			fi
+		else DisplayArguments
+		fi
+	elif [ "$option1" = "LAN" ]; then
+		if [ "$option2" = "STATE" ]; then LANstate "$option2";
 		else DisplayArguments
 		fi
 	elif [ "$option1" = "REPEATER" ]; then
