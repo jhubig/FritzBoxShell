@@ -35,6 +35,57 @@ source $DIRECTORY/fritzBoxShellConfig.sh
 option1=$1
 option2=$2
 
+UPNPMetaData(){
+		location="/tr64desc.xml"
+
+		curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" http://$BoxIP:49000$location 
+}
+
+IGDMetaData(){
+		location="/igddesc.xml"
+
+		curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" http://$BoxIP:49000$location 
+}
+
+readout() {
+		curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" http://$BoxIP:49000$location -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p")
+		echo "$curlOutput1"
+}
+
+WLANstatistics() {
+		location="/upnp/control/wlanconfig1"
+		uri="urn:dslforum-org:service:WLANConfiguration:1"
+		action='GetStatistics'
+
+		readout
+
+		action='GetTotalAssociations'
+
+		readout
+
+		action='GetInfo'
+
+		readout
+		echo "NewGHz 2.4"
+}
+
+WLAN5statistics() {
+		location="/upnp/control/wlanconfig2"
+		uri="urn:dslforum-org:service:WLANConfiguration:2"
+		action='GetStatistics'
+		
+		readout
+
+		action='GetTotalAssociations'
+
+		readout
+
+		action='GetInfo'
+
+		readout
+		echo "NewGHz 5"
+}
+
 WLANstate() {
 
 	# Building the inputs for the SOAP Action based on which WiFi to switch ON/OFF
@@ -98,7 +149,9 @@ DisplayArguments() {
 	echo "|  Action  | Parameter       | Description                                                          |"
 	echo "|----------|-----------------|----------------------------------------------------------------------|"
 	echo "| WLAN_2G  | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi          |"
+	echo "| WLAN_2G  | STATISTICS      | Statistics for the 2,4 Ghz WiFi easily digestable by telegraf        |"
 	echo "| WLAN_5G  | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 5 Ghz WiFi            |"
+	echo "| WLAN_5G  | STATISTICS      | Statistics for the 5 Ghz WiFi easily digestable by telegraf          |"
 	echo "| WLAN     | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |"
 	echo "| REPEATER | 0               | Switching OFF the WiFi of the Repeater                               |"
 	echo "| REBOOT   | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater                           |"
@@ -119,7 +172,12 @@ else
 		if [ "$option2" = "1" ]; then WLANstate "ON";
 		elif [ "$option2" = "0" ]; then WLANstate "OFF";
 		elif [ "$option2" = "STATE" ]; then WLANstate "STATE";
-	else DisplayArguments
+		elif [ "$option2" = "STATISTICS" ]; then
+			if [ "$option1" = "WLAN_2G" ]; then WLANstatistics;
+			elif [ "$option1" = "WLAN_5G" ]; then WLAN5statistics;
+			else DisplayArguments
+			fi
+		else DisplayArguments
 		fi
 	elif [ "$option1" = "REPEATER" ]; then
 		if [ "$option2" = "1" ]; then RepeaterWLANstate "ON"; # Usually this will not work because there is no connection possible to the Fritz!Repeater as long as WiFi is OFF
