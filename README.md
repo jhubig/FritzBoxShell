@@ -1,5 +1,6 @@
-[![GitHub release](https://img.shields.io/github/release/jhubig/FritzBoxShell.svg?maxAge=1)]()
-[![Github All Releases](https://img.shields.io/github/downloads/jhubig/FritzBoxShell/total.svg)](https://github.com/jhubig/FritzBoxShell)
+[//]: <> [![start with why](https://img.shields.io/badge/start%20with-why%3F-brightgreen.svg?style=flat)](http://www.ted.com/talks/simon_sinek_how_great_leaders_inspire_action)
+[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/elbosso/FritzBoxShell/issues)
+[![Github All Releases](https://img.shields.io/github/downloads/elbosso/FritzBoxShell/total.svg)](https://github.com/elbosso/FritzBoxShell)
 
 
 # FritzBoxShell
@@ -22,7 +23,7 @@ This package (before the fork) was tested on
 * OK: Fritz!Repeater 310, with firmware version `6.92`
 
 After the fork, it has solely been tested on
-* FRITZ!Box 6490 Cable (kdg) with FRITZ!OS: 06.87 
+* FRITZ!Box 6490 Cable (kdg) with firmware version `06.87`
   * DSL not working
   * WAN partly working (rates are always 0)
   * WANDSLLINK not working
@@ -99,3 +100,6 @@ Example (Deactivates the 5Ghz on your FritzBox):
 Currently I'm using the script (located on my RaspberryPi which is always connected to my router via ethernet) combined with Workflow (https://itunes.apple.com/de/app/workflow/id915249334?mt=8) on my iPhone/iPad. Workflow offers the possibility to send SSH commands directly to your raspberry or to any other SSH capable device. After creating the workflow itself, I have added them to the Today Widget view for faster access.
 
 ![iOS_Workflow_SSH.png](img/iOS_Workflow_SSH.png?raw=true "iOS_Workflow_SSH.png")
+
+### Example Use with Telegraf
+
