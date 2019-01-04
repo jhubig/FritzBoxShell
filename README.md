@@ -37,6 +37,10 @@ After the fork, it has solely been tested on
   * DSL not working
   * WAN partly working (rates are always 0)
   * WANDSLLINK not working
+* FRITZ!WLAN Repeater DVB-C with firmware version `06.92`
+  * everything concerning Wifi works as expected
+  * nothing else works (also as expected because - it is no Fritz!Box)
+  * no information pertaining DVB-C is provided via TR064
 
 ## External Links
 

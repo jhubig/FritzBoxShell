@@ -38,13 +38,13 @@ option2=$2
 UPNPMetaData(){
 		location="/tr64desc.xml"
 
-		curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" http://$BoxIP:49000$location 
+		curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" http://$BoxIP:49000$location >$option2
 }
 
 IGDMetaData(){
 		location="/igddesc.xml"
 
-		curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" http://$BoxIP:49000$location 
+		curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" http://$BoxIP:49000$location >$option2
 }
 
 readout() {
@@ -351,6 +351,10 @@ else
 		if [ "$option2" = "STATE" ]; then IGDIPstate "$option2";
 		else DisplayArguments
 		fi
+	elif [ "$option1" = "UPNPMetaData" ]; then
+		UPNPMetaData "$option2";
+	elif [ "$option1" = "IGDMetaData" ]; then
+		IGDMetaData "$option2";
 	elif [ "$option1" = "REPEATER" ]; then
 		if [ "$option2" = "1" ]; then RepeaterWLANstate "ON"; # Usually this will not work because there is no connection possible to the Fritz!Repeater as long as WiFi is OFF
 		elif [ "$option2" = "0" ]; then RepeaterWLANstate "OFF";
