@@ -2,7 +2,7 @@
 [![start with why](https://img.shields.io/badge/start%20with-why%3F-brightgreen.svg?style=flat)](http://www.ted.com/talks/simon_sinek_how_great_leaders_inspire_action)
 --->
 [![GitHub release](https://img.shields.io/github/release/elbosso/FritzBoxShell/all.svg?maxAge=1)](https://GitHub.com/elbosso/FritzBoxShell/releases/)
-[![GitHub tag](https://img.shields.io/github/tag/elbosso/FritzBoxShell.svg)](https://GitHub.com/Naereen/StrapDown.js/tags/)
+[![GitHub tag](https://img.shields.io/github/tag/elbosso/FritzBoxShell.svg)](https://GitHub.com/elbosso/FritzBoxShell/tags/)
 [![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/)
 [![GitHub license](https://img.shields.io/github/license/elbosso/FritzBoxShell.svg)](https://github.com/elbosso/FritzBoxShell/blob/master/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/elbosso/FritzBoxShell.svg)](https://GitHub.com/elbosso/FritzBoxShell/issues/)
