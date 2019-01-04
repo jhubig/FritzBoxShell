@@ -42,6 +42,37 @@ After the fork, it has solely been tested on
   * nothing else works (also as expected because - it is no Fritz!Box)
   * no information pertaining DVB-C is provided via TR064
 
+### Become a part of it!
+
+If you want to check out if your AVM device actually works with this script, you can do so by 
+executing `fritzBoxShellTest.sh`. It orints for (almost) every Service/Action pair if they 
+delivered data when called. 
+
+Authentication is handled exactly as described for `fritzBoxShell.sh`.
+
+The result is a list written to the console containing the names of the checked service and actions
+followed by the resuklt of the check. Finally, the device type and firmware version are printed (of 
+course only if this functionality was accessible!).
+
+As an example - the result for my Fritz!Box:
+
+```
+WLAN_2G STATISTICS43	is working!
+WLAN_2G STATE6	is working!
+WLAN_5G STATISTICS43	is working!
+WLAN_2G STATE6	is working!
+WLAN STATE12	is working!
+LAN STATE8	is working!
+DSL STATE0	is not working!
+WAN STATE16	is working!
+LINK STATE0	is not working!
+IGDWAN STATE28	is working!
+IGDDSL STATE15	is working!
+IGDIP STATE48	is working!
+NewModelName FRITZ!Box 6490 Cable (kdg)
+NewSoftwareVersion 141.06.87
+```
+
 ## External Links
 
 Here you can find more information on TR-064 protocol and the available actions in your Fritz!Box or Fritz!Repeater.

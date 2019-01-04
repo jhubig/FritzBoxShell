@@ -1,15 +1,19 @@
 #!/bin/bash
 
-#******************************************************#
-#** Autor: Johannes Hubig <johannes.hubig@gmail.com> **#
-#******************************************************#
+#************************************************************#
+#** Autor: Johannes Hubig <johannes.hubig@gmail.com>       **#
+#** Autor: Jürgen Key https://elbosso.github.io/index.html **#
+#************************************************************#
 
 # The following script should work from FritzOS 6.0 on-
 # wards.
 # Was tested successfully on:
 #  * Fritz!Box 7490 FritzOS 6.93
 #  * Fritz!Repeater 310 FritzOS 6.92
-
+# Was tested (partly) successfully on:
+#  * FRITZ!Box 6490 Cable (kdg) with firmware version `06.87`
+#  * FRITZ!WLAN Repeater DVB-C with firmware version `06.92`
+#
 # Protokoll TR-064 was used to control the Fritz!Box and
 # Fritz!Repeater. For sure not all commands are
 # available on Fritz!Repeater.
@@ -223,6 +227,21 @@ IGDIPstate() {
 
 }
 
+Deviceinfo() {
+		location="/upnp/control/deviceinfo"
+		uri="urn:dslforum-org:service:DeviceInfo:1"
+		action='GetInfo'
+
+		readout
+
+#		location="/upnp/control/userif"
+#		uri="urn:dslforum-org:service:UserInterface:1"
+#		action='X_AVM-DE_GetInfo'
+
+#		readout
+
+}
+
 WLANstate() {
 
 	# Building the inputs for the SOAP Action based on which WiFi to switch ON/OFF
@@ -355,6 +374,8 @@ else
 		UPNPMetaData "$option2";
 	elif [ "$option1" = "IGDMetaData" ]; then
 		IGDMetaData "$option2";
+	elif [ "$option1" = "Deviceinfo" ]; then
+		Deviceinfo "$option2";
 	elif [ "$option1" = "REPEATER" ]; then
 		if [ "$option2" = "1" ]; then RepeaterWLANstate "ON"; # Usually this will not work because there is no connection possible to the Fritz!Repeater as long as WiFi is OFF
 		elif [ "$option2" = "0" ]; then RepeaterWLANstate "OFF";
