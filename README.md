@@ -10,8 +10,7 @@
 [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/elbosso/FritzBoxShell/issues)
 [![GitHub contributors](https://img.shields.io/github/contributors/elbosso/FritzBoxShell.svg)](https://GitHub.com/elbosso/FritzBoxShell/graphs/contributors/)
 [![Github All Releases](https://img.shields.io/github/downloads/elbosso/FritzBoxShell/total.svg)](https://github.com/elbosso/FritzBoxShell)
-
-
+[![Website elbosso.github.io](https://img.shields.io/website-up-down-green-red/https/elbosso.github.io.svg)](https://elbosso.github.io/)
 
 # FritzBoxShell
 
