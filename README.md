@@ -1,16 +1,16 @@
 <!---
 [![start with why](https://img.shields.io/badge/start%20with-why%3F-brightgreen.svg?style=flat)](http://www.ted.com/talks/simon_sinek_how_great_leaders_inspire_action)
 --->
-[![GitHub release](https://img.shields.io/github/release/elbosso/FritzBoxShell/all.svg?maxAge=1)](https://GitHub.com/elbosso/FritzBoxShell/releases/)
-[![GitHub tag](https://img.shields.io/github/tag/elbosso/FritzBoxShell.svg)](https://GitHub.com/elbosso/FritzBoxShell/tags/)
+[![GitHub release](https://img.shields.io/github/release/jhubig/FritzBoxShell/all.svg?maxAge=1)](https://GitHub.com/jhubig/FritzBoxShell/releases/)
+[![GitHub tag](https://img.shields.io/github/tag/jhubig/FritzBoxShell.svg)](https://GitHub.com/jhubig/FritzBoxShell/tags/)
 [![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/)
-[![GitHub license](https://img.shields.io/github/license/elbosso/FritzBoxShell.svg)](https://github.com/elbosso/FritzBoxShell/blob/master/LICENSE)
-[![GitHub issues](https://img.shields.io/github/issues/elbosso/FritzBoxShell.svg)](https://GitHub.com/elbosso/FritzBoxShell/issues/)
-[![GitHub issues-closed](https://img.shields.io/github/issues-closed/elbosso/FritzBoxShell.svg)](https://GitHub.com/elbosso/FritzBoxShell/issues?q=is%3Aissue+is%3Aclosed)
-[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/elbosso/FritzBoxShell/issues)
-[![GitHub contributors](https://img.shields.io/github/contributors/elbosso/FritzBoxShell.svg)](https://GitHub.com/elbosso/FritzBoxShell/graphs/contributors/)
-[![Github All Releases](https://img.shields.io/github/downloads/elbosso/FritzBoxShell/total.svg)](https://github.com/elbosso/FritzBoxShell)
-[![Website elbosso.github.io](https://img.shields.io/website-up-down-green-red/https/elbosso.github.io.svg)](https://elbosso.github.io/)
+[![GitHub license](https://img.shields.io/github/license/jhubig/FritzBoxShell.svg)](https://github.com/jhubig/FritzBoxShell/blob/master/LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/jhubig/FritzBoxShell.svg)](https://GitHub.com/jhubig/FritzBoxShell/issues/)
+[![GitHub issues-closed](https://img.shields.io/github/issues-closed/jhubig/FritzBoxShell.svg)](https://GitHub.com/jhubig/FritzBoxShell/issues?q=is%3Aissue+is%3Aclosed)
+[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/jhubig/FritzBoxShell/issues)
+[![GitHub contributors](https://img.shields.io/github/contributors/jhubig/FritzBoxShell.svg)](https://GitHub.com/jhubig/FritzBoxShell/graphs/contributors/)
+[![Github All Releases](https://img.shields.io/github/downloads/jhubig/FritzBoxShell/total.svg)](https://github.com/jhubig/FritzBoxShell)
+[![Github All Releases](https://img.shields.io/github/watchers/jhubig/FritzBoxShell?style=social)](https://github.com/jhubig/FritzBoxShell)
 
 # FritzBoxShell
 
@@ -25,13 +25,13 @@ The shell script uses cURL to create an SOAP request based on the TR-064 protoco
 
 Please raise an issue with your function you would like to add.
 
-This package (before the fork) was tested on
-* OK: Fritz!Box 7490, with firmware version `6.93`
-* NOK: Fritz!Box 7490, with firmware version `06.98-53696 BETA`
-  * Status check not working anymore. NewStatus field not updated. Stays "Disabled".
-* OK: Fritz!Repeater 310, with firmware version `6.92`
+This package was tested on
+* OK: Fritz!Box 7490, with firmware version `7.12`
+* OK: Fritz!Repeater 310, with firmware version `7.12`
+  * everything concerning Wifi works as expected
+  * nothing else works (also as expected because - it is no Fritz!Box)
 
-After the fork, it has solely been tested on
+After the fork (pull request #2), it has solely been tested on
 * FRITZ!Box 6490 Cable (kdg) with firmware version `06.87`
   * DSL not working
   * WAN partly working (rates are always 0)
@@ -43,15 +43,11 @@ After the fork, it has solely been tested on
 
 ### Become a part of it!
 
-If you want to check out if your AVM device actually works with this script, you can do so by 
-executing `fritzBoxShellTest.sh`. It orints for (almost) every Service/Action pair if they 
-delivered data when called. 
+If you want to check out if your AVM device actually works with this script, you can do so by executing `fritzBoxShellTest.sh`. It prints for (almost) every Service/Action pair if they delivered data when called.
 
 Authentication is handled exactly as described for `fritzBoxShell.sh`.
 
-The result is a list written to the console containing the names of the checked service and actions
-followed by the resuklt of the check. Finally, the device type and firmware version are printed (of 
-course only if this functionality was accessible!).
+The result is a list written to the console containing the names of the checked service and actions followed by the result of the check. Finally, the device type and firmware version are printed (of course only if this functionality was accessible!).
 
 As an example - the result for my Fritz!Box:
 
@@ -92,12 +88,13 @@ Copy the fritzBoxShell.sh to your desired location (In my personal use case, I p
 
 ```
 chmod 755 fritzBoxShell.sh
+chmod 755 fritzBoxShellTest.sh
 ```
 ## Configuration
 
 The file fritzBoxShellConfig.sh contains all Information pertaining to endpoints and credentials. You can
 choose to adjust it or you can choose to give this information as environment variables at the start of the script.
-If you choose to use environment variables, you need not comment or delete anything in fritzBoxShellConfig.sh - 
+If you choose to use environment variables, you need not comment or delete anything in fritzBoxShellConfig.sh -
 environment variables alway take precedence over the contents of fritzBoxShellConfig.sh.
 
 Calling fritzBoxShell.sh using environment variables could look like this:
@@ -127,6 +124,9 @@ Example (Deactivates the 5Ghz on your FritzBox):
 | WLAN_5G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 5 Ghz WiFi |
 | WLAN_5G  | STATISTICS      | Statistics for the 5 Ghz WiFi easily digestible by telegraf          |
 | WLAN | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |
+| TAM | <index> and GetInfo | e.g. TAM 0 GetInfo (gives info about answering machine) |
+| TAM | <index> and ON or OFF | e.g. TAM 0 ON (switches ON the answering machine) |
+| TAM | <index> and GetMsgs | e.g. TAM 0 GetMsgs (gives XML formatted list of messages) |
 | LAN | STATE | Statistics for the LAN easily digestible by telegraf |
 | DSL | STATE | Statistics for the DSL easily digestible by telegraf |
 | WAN | STATE | Statistics for the WAN easily digestible by telegraf |
@@ -136,6 +136,8 @@ Example (Deactivates the 5Ghz on your FritzBox):
 | IGDIP | STATE | Statistics for the DSL IP easily digestible by telegraf |
 | REPEATER | 0 | Switching OFF the WiFi of the Repeater |
 | REBOOT | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater |
+| UPNPMetaData | STATE or <filename> | Full unformatted output of tr64desc.xml to console or file |
+| IGDMetaData | STATE or <filename> | Full unformatted output of igddesc.xml to console or file |
 
 ### Notes:
 
@@ -150,7 +152,7 @@ Currently I'm using the script (located on my RaspberryPi which is always connec
 
 ### Example Use with Telegraf
 Suppose, you want to visualize the overall Download Rate of your FritzBox: The way to go here is to use the Action IGDWAN with parameter STATE. It gives (for example) this output:
- 
+
 ```
 NewByteSendRate 265
 NewByteReceiveRate 17
@@ -196,4 +198,3 @@ Now for the ugly truth: we can not use the command shown earlier for where it sa
 
 #### Note
 Data with huge absolute values probably dont fit into type `integer` - in this case, `long` is the way to go...
-

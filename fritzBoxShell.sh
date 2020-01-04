@@ -8,12 +8,6 @@
 
 # The following script should work from FritzOS 6.0 on-
 # wards.
-# Was tested successfully on:
-#  * Fritz!Box 7490 FritzOS 6.93
-#  * Fritz!Repeater 310 FritzOS 6.92
-# Was tested (partly) successfully on:
-#  * FRITZ!Box 6490 Cable (kdg) with firmware version `06.87`
-#  * FRITZ!WLAN Repeater DVB-C with firmware version `06.92`
 #
 # Protokoll TR-064 was used to control the Fritz!Box and
 # Fritz!Repeater. For sure not all commands are
@@ -41,17 +35,22 @@ source "$DIRECTORY/fritzBoxShellConfig.sh"
 
 option1="$1"
 option2="$2"
+option3="$3"
 
 UPNPMetaData(){
 		location="/tr64desc.xml"
 
-		curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" >"$option2"
+		if [ "$option2" = "STATE" ]; then curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location"
+	else curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" >"$DIRECTORY/$option2"
+		fi
 }
 
 IGDMetaData(){
 		location="/igddesc.xml"
 
-		curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" >"$option2"
+		if [ "$option2" = "STATE" ]; then curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location"
+	else curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" >"$DIRECTORY/$option2"
+		fi
 }
 
 readout() {
@@ -80,7 +79,7 @@ WLAN5statistics() {
 		location="/upnp/control/wlanconfig2"
 		uri="urn:dslforum-org:service:WLANConfiguration:2"
 		action='GetStatistics'
-		
+
 		readout
 
 		action='GetTotalAssociations'
@@ -245,6 +244,38 @@ Deviceinfo() {
 
 }
 
+TAM() {
+		location="/upnp/control/x_tam"
+		uri="urn:dslforum-org:service:X_AVM-DE_TAM:1"
+
+		if [ "$option3" = "GetInfo" ]; then
+			action='GetInfo'
+			curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewIndex>$option2</NewIndex></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p"
+
+		# Switch ON the TAM
+	elif [ "$option3" = "ON" ]; then
+			action='SetEnable'
+			curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewIndex>$option2</NewIndex><NewEnable>1</NewEnable></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p"
+			echo "Answering machine is switched ON"
+
+		# Switch OFF the TAM
+	elif [ "$option3" = "OFF" ]; then
+			action='SetEnable'
+			curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewIndex>$option2</NewIndex><NewEnable>0</NewEnable></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p"
+			echo "Answering machine is switched OFF"
+
+		# Get CallList from TAM
+	elif [ "$option3" = "GetMsgs" ]; then
+			action='GetMessageList'
+			curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewIndex>$option2</NewIndex></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p")
+
+			#WGETresult=$(wget -O - "$curlOutput1" 2>/dev/null) Doesn't work with double quotes. Therefore in line below the shellcheck fails.
+			WGETresult=$(wget -O - $curlOutput1 2>/dev/null)
+			echo "$WGETresult"
+
+		fi
+}
+
 WLANstate() {
 
 	# Building the inputs for the SOAP Action based on which WiFi to switch ON/OFF
@@ -304,24 +335,33 @@ DisplayArguments() {
 	echo ""
 	echo "Invalid Action and/or parameter. Possible combinations:"
 	echo ""
-	echo "|----------|-----------------|----------------------------------------------------------------------|"
-	echo "|  Action  | Parameter       | Description                                                          |"
-	echo "|----------|-----------------|----------------------------------------------------------------------|"
-	echo "| WLAN_2G  | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi          |"
-	echo "| WLAN_2G  | STATISTICS      | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf        |"
-	echo "| WLAN_5G  | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 5 Ghz WiFi            |"
-	echo "| WLAN_5G  | STATISTICS      | Statistics for the 5 Ghz WiFi easily digestible by telegraf          |"
-	echo "| WLAN     | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |"
-	echo "| LAN      | STATE           | Statistics for the LAN easily digestible by telegraf                 |"
-	echo "| DSL      | STATE           | Statistics for the DSL easily digestible by telegraf                 |"
-	echo "| WAN      | STATE           | Statistics for the WAN easily digestible by telegraf                 |"
-	echo "| LINK     | STATE           | Statistics for the WAN DSL LINK easily digestible by telegraf        |"
-	echo "| IGDWAN   | STATE           | Statistics for the WAN LINK easily digestible by telegraf            |"
-	echo "| IGDDSL   | STATE           | Statistics for the DSL LINK easily digestible by telegraf            |"
-	echo "| IGDIP    | STATE           | Statistics for the DSL IP easily digestible by telegraf              |"
-	echo "| REPEATER | 0               | Switching OFF the WiFi of the Repeater                               |"
-	echo "| REBOOT   | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater                           |"
-	echo "|----------|-----------------|----------------------------------------------------------------------|"
+	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
+	echo "|  Action      | Parameter              | Description                                                             |"
+	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
+	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| DeviceInfo   | STATE                  | Show information about your Fritz!Box like ModelName, SN, etc.          |"
+	echo "| WLAN_2G      | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi             |"
+	echo "| WLAN_2G      | STATISTICS             | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf           |"
+	echo "| WLAN_5G      | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 5 Ghz WiFi               |"
+	echo "| WLAN_5G      | STATISTICS             | Statistics for the 5 Ghz WiFi easily digestible by telegraf             |"
+	echo "| WLAN         | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi    |"
+	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| TAM          | <index> and GetInfo    | e.g. TAM 0 GetInfo (gives info about answering machine)                 |"
+	echo "| TAM          | <index> and ON or OFF  | e.g. TAM 0 ON (switches ON the answering machine)                       |"
+	echo "| TAM          | <index> and GetMsgs    | e.g. TAM 0 GetMsgs (gives XML formatted list of messages)               |"
+	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| LAN          | STATE                  | Statistics for the LAN easily digestible by telegraf                    |"
+	echo "| DSL          | STATE                  | Statistics for the DSL easily digestible by telegraf                    |"
+	echo "| WAN          | STATE                  | Statistics for the WAN easily digestible by telegraf                    |"
+	echo "| LINK         | STATE                  | Statistics for the WAN DSL LINK easily digestible by telegraf           |"
+	echo "| IGDWAN       | STATE                  | Statistics for the WAN LINK easily digestible by telegraf               |"
+	echo "| IGDDSL       | STATE                  | Statistics for the DSL LINK easily digestible by telegraf               |"
+	echo "| IGDIP        | STATE                  | Statistics for the DSL IP easily digestible by telegraf                 |"
+	echo "| REPEATER     | 0                      | Switching OFF the WiFi of the Repeater                                  |"
+	echo "| REBOOT       | Box or Repeater        | Rebooting your Fritz!Box or Fritz!Repeater                              |"
+	echo "| UPNPMetaData | STATE or <filename>    | Full unformatted output of tr64desc.xml to console or file              |"
+	echo "| IGDMetaData  | STATE or <filename>    | Full unformatted output of igddesc.xml to console or file               |"
+	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
 	echo ""
 }
 
@@ -379,6 +419,10 @@ else
 		IGDMetaData "$option2";
 	elif [ "$option1" = "Deviceinfo" ]; then
 		Deviceinfo "$option2";
+	elif [ "$option1" = "TAM" ]; then
+		if [[ $option2 =~ ^[+-]?[0-9]+$ ]] && { [ "$option3" = "GetInfo" ] || [ "$option3" = "ON" ] || [ "$option3" = "OFF" ] || [ "$option3" = "GetMsgs" ];}; then TAM
+		else DisplayArguments
+		fi
 	elif [ "$option1" = "REPEATER" ]; then
 		if [ "$option2" = "1" ]; then RepeaterWLANstate "ON"; # Usually this will not work because there is no connection possible to the Fritz!Repeater as long as WiFi is OFF
 		elif [ "$option2" = "0" ]; then RepeaterWLANstate "OFF";

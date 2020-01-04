@@ -2,6 +2,7 @@
 # shellcheck disable=SC1090
 #************************************************************#
 #** Autor: Jürgen Key https://elbosso.github.io/index.html **#
+#** Autor: Johannes Hubig <johannes.hubig@gmail.com>       **#
 #************************************************************#
 
 # The following script is supposed to test what actions are
@@ -13,9 +14,9 @@ DIRECTORY=$(cd "$dir" && pwd)
 source "$DIRECTORY/fritzBoxShellConfig.sh"
 
 ## declare an array variable
-declare -a services=("WLAN_2G"   "WLAN_2G" "WLAN_5G"    "WLAN_2G" "WLAN"  "LAN"   "DSL"   "WAN"   "LINK"  "IGDWAN" "IGDDSL" "IGDIP" )
-declare -a actions=("STATISTICS" "STATE"   "STATISTICS" "STATE"   "STATE" "STATE" "STATE" "STATE" "STATE" "STATE"  "STATE"  "STATE" )
-declare -a minwords=(3           5         3            5         9       1       1       1       1       1        1        1       )
+declare -a services=("WLAN_2G"   "WLAN_2G" "WLAN_5G"    "WLAN_2G" "WLAN"  "LAN"   "DSL"   "WAN"   "LINK"  "IGDWAN" "IGDDSL" "IGDIP" "TAM")
+declare -a actions=("STATISTICS" "STATE"   "STATISTICS" "STATE"   "STATE" "STATE" "STATE" "STATE" "STATE" "STATE"  "STATE"  "STATE" "0 GetInfo")
+declare -a minwords=(3           5         3            5         9       1       1       1       1       1        1        1       5      )
 
 ## now loop through the above array
 counter=0
@@ -29,5 +30,3 @@ do
 done
 /bin/bash "$DIRECTORY/fritzBoxShell.sh" Deviceinfo 3 | grep NewModelName
 /bin/bash "$DIRECTORY/fritzBoxShell.sh" Deviceinfo 3 | grep NewSoftwareVersion
-
-
