@@ -23,6 +23,8 @@
 The script allows you to control/check your FritzBox from the terminal with a shell script. It is planned to add more functions in the future.
 The shell script uses cURL to create an SOAP request based on the TR-064 protocol to talk to the AVM Fritz!Box and AVM Fritz!Repeater.
 
+To change state of the LEDs in front of the Fritz!Box the TR-064 protocol does not offer the possibility. Therefore the AHA-HTTP-Interface is used. To be able to access it, the web password (password used to login in Fritz!Box) is needed. New variable (WebPW) added in fritzBoxShellConfig.sh. This only works from firmware version `7.10` and upwards.
+
 Please raise an issue with your function you would like to add.
 
 This package was tested on
@@ -100,7 +102,7 @@ environment variables alway take precedence over the contents of fritzBoxShellCo
 Calling fritzBoxShell.sh using environment variables could look like this:
 
 ```
-BoxUSER=YourUser BoxPW=YourPassword ./fritzBoxShell.sh <ACTION> <PARAMETER>
+BoxUSER=YourUser BoxPW=YourPassword WebPW=YourPassword ./fritzBoxShell.sh <ACTION> <PARAMETER>
 ```
 
 ## Usage
@@ -127,6 +129,7 @@ Example (Deactivates the 5Ghz on your FritzBox):
 | TAM | <index> and GetInfo | e.g. TAM 0 GetInfo (gives info about answering machine) |
 | TAM | <index> and ON or OFF | e.g. TAM 0 ON (switches ON the answering machine) |
 | TAM | <index> and GetMsgs | e.g. TAM 0 GetMsgs (gives XML formatted list of messages) |
+| LED | 0 or 1 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box |
 | LAN | STATE | Statistics for the LAN easily digestible by telegraf |
 | DSL | STATE | Statistics for the DSL easily digestible by telegraf |
 | WAN | STATE | Statistics for the WAN easily digestible by telegraf |
