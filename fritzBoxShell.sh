@@ -17,6 +17,12 @@
 # http://fritz.box:49000/tr64desc.xml
 # https://wiki.fhem.de/wiki/FRITZBOX#TR-064
 # https://avm.de/service/schnittstellen/
+#
+# To change state of the LEDs in front of the Fritz!Box the
+# TR-064 protocol does not offer the possibility. Therefore
+# the AHA-HTTP-Interface is used. To be able to access it,
+# the web password (password used to login in Fritz!Box)
+# is needed. New variable added in fritzBoxShellConfig.sh.
 
 dir=$(dirname "$0")
 
@@ -37,6 +43,46 @@ option1="$1"
 option2="$2"
 option3="$3"
 
+### ----------------------------------------------------------------------------------------------------- ###
+### ----------- FUNCTION LEDswitch FOR SWITCHING ON OR OFF THE LEDS IN front of the Fritz!Box ----------- ###
+### --- Here the TR-064 protocol cannot be used. Therefore different login mechanism needed with SID ---- ###
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+LEDswitch(){
+	# Collect the challenge
+	CHALLENGE=`wget -O - "http://$BoxIP/login_sid.lua" 2>/dev/null | sed 's/.*<Challenge>\(.*\)<\/Challenge>.*/\1/'`
+
+	# Built up the login and hash it
+	CPSTR="$CHALLENGE-$WebPW"
+	MD5=`echo -n $CPSTR | iconv -f ISO8859-1 -t UTF-16LE | md5sum -b | awk '{print substr($0,1,32)}'`
+	RESPONSE="$CHALLENGE-$MD5"
+	URL_PARAMS="response=$RESPONSE"
+
+	# Send the login and get the SID (Session ID)
+	SID=`wget -O - "http://$BoxIP/login_sid.lua?$URL_PARAMS" 2>/dev/null | sed 's/.*<SID>\(.*\)<\/SID>.*/\1/'`
+	#echo SID=$SID
+
+	if [ "$option2" = "0" ]; then LEDstate=2; fi # When
+	if [ "$option2" = "1" ]; then LEDstate=0; fi
+
+	# led_display=0 -> ON
+	# led_display=1 -> DELAYED ON (20200106: not really slower that option 0 - NOT USED)
+	# led_display=2 -> OFF
+	wget -O - --post-data sid=$SID\&led_display=$LEDstate\&apply= http://$BoxIP/system/led_display.lua 2>/dev/null
+	if [ "$option2" = "0" ]; then echo "LEDs switched OFF"; fi
+	if [ "$option2" = "1" ]; then echo "LEDs switched ON"; fi
+
+	# Logout the "used" SID
+	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+}
+
+readout() {
+		curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p")
+		echo "$curlOutput1"
+}
+
 UPNPMetaData(){
 		location="/tr64desc.xml"
 
@@ -51,11 +97,6 @@ IGDMetaData(){
 		if [ "$option2" = "STATE" ]; then curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location"
 	else curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" >"$DIRECTORY/$option2"
 		fi
-}
-
-readout() {
-		curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p")
-		echo "$curlOutput1"
 }
 
 WLANstatistics() {
@@ -350,6 +391,8 @@ DisplayArguments() {
 	echo "| TAM          | <index> and ON or OFF  | e.g. TAM 0 ON (switches ON the answering machine)                       |"
 	echo "| TAM          | <index> and GetMsgs    | e.g. TAM 0 GetMsgs (gives XML formatted list of messages)               |"
 	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| LED          | 0 or 1                 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box          |"
+	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
 	echo "| LAN          | STATE                  | Statistics for the LAN easily digestible by telegraf                    |"
 	echo "| DSL          | STATE                  | Statistics for the DSL easily digestible by telegraf                    |"
 	echo "| WAN          | STATE                  | Statistics for the WAN easily digestible by telegraf                    |"
@@ -419,6 +462,8 @@ else
 		IGDMetaData "$option2";
 	elif [ "$option1" = "Deviceinfo" ]; then
 		Deviceinfo "$option2";
+	elif [ "$option1" = "LED" ]; then
+		LEDswitch "$option2";
 	elif [ "$option1" = "TAM" ]; then
 		if [[ $option2 =~ ^[+-]?[0-9]+$ ]] && { [ "$option3" = "GetInfo" ] || [ "$option3" = "ON" ] || [ "$option3" = "OFF" ] || [ "$option3" = "GetMsgs" ];}; then TAM
 		else DisplayArguments
