@@ -78,10 +78,19 @@ LEDswitch(){
 	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
 }
 
+### ----------------------------------------------------------------------------------------------------- ###
+### -------------------------------- FUNCTION readout - TR-064 Protocol --------------------------------- ###
+### -- General function for sending the SOAP request via TR-064 Protocol - called from other functions -- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
 readout() {
 		curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p")
 		echo "$curlOutput1"
 }
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------------ FUNCTION UPNPMetaData - TR-064 Protocol ------------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
 
 UPNPMetaData(){
 		location="/tr64desc.xml"
@@ -91,6 +100,10 @@ UPNPMetaData(){
 		fi
 }
 
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------------ FUNCTION IGDMetaData - TR-064 Protocol ------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
 IGDMetaData(){
 		location="/igddesc.xml"
 
@@ -98,6 +111,10 @@ IGDMetaData(){
 	else curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" >"$DIRECTORY/$option2"
 		fi
 }
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ----------------------- FUNCTION WLANstatistics for 2.4 Ghz - TR-064 Protocol ----------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
 
 WLANstatistics() {
 		location="/upnp/control/wlanconfig1"
@@ -116,6 +133,10 @@ WLANstatistics() {
 		echo "NewGHz 2.4"
 }
 
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------ FUNCTION WLANstatistics for 5 Ghz - TR-064 Protocol ------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+
 WLAN5statistics() {
 		location="/upnp/control/wlanconfig2"
 		uri="urn:dslforum-org:service:WLANConfiguration:2"
@@ -133,6 +154,10 @@ WLAN5statistics() {
 		echo "NewGHz 5"
 }
 
+### ----------------------------------------------------------------------------------------------------- ###
+### -------------------------------- FUNCTION LANstate - TR-064 Protocol -------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
 LANstate() {
 		location="/upnp/control/lanethernetifcfg"
 		uri="urn:dslforum-org:service:LANEthernetInterfaceConfig:1"
@@ -141,6 +166,10 @@ LANstate() {
 		readout
 }
 
+### ----------------------------------------------------------------------------------------------------- ###
+### -------------------------------- FUNCTION DSLstate - TR-064 Protocol -------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
 DSLstate() {
 		location="/igdupnp/control/wandslifconfig1"
 		uri="urn:dslforum-org:service:WANDSLInterfaceConfig:1"
@@ -148,6 +177,10 @@ DSLstate() {
 
 		readout
 }
+
+### ----------------------------------------------------------------------------------------------------- ###
+### -------------------------------- FUNCTION WANstate - TR-064 Protocol -------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
 
 WANstate() {
 		location="/upnp/control/wancommonifconfig1"
@@ -178,6 +211,10 @@ WANstate() {
 
 }
 
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------- FUNCTION WANDSLLINKstate - TR-064 Protocol ----------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
 WANDSLLINKstate() {
 		location="/upnp/control/wandsllinkconfig1"
 		uri="urn:dslforum-org:service:WANDSLLinkConfig:1"
@@ -187,6 +224,10 @@ WANDSLLINKstate() {
 
 }
 
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------------ FUNCTION IGDWANstate - TR-064 Protocol ------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
 IGDWANstate() {
 		location="/igdupnp/control/WANCommonIFC1"
 		uri="urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1"
@@ -195,6 +236,10 @@ IGDWANstate() {
 		readout
 
 }
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------- FUNCTION IGDDSLLINKstate - TR-064 Protocol ----------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
 
 IGDDSLLINKstate() {
 		location="/igdupnp/control/WANDSLLinkC1"
@@ -224,6 +269,10 @@ IGDDSLLINKstate() {
 		readout
 
 }
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------------ FUNCTION IGDIPstate - TR-064 Protocol -------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
 
 IGDIPstate() {
 		location="/igdupnp/control/WANIPConn1"
@@ -270,6 +319,10 @@ IGDIPstate() {
 
 }
 
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------------ FUNCTION Deviceinfo - TR-064 Protocol -------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
 Deviceinfo() {
 		location="/upnp/control/deviceinfo"
 		uri="urn:dslforum-org:service:DeviceInfo:1"
@@ -284,6 +337,11 @@ Deviceinfo() {
 #		readout
 
 }
+
+### ----------------------------------------------------------------------------------------------------- ###
+### --------------------------------- FUNCTION TAM - TR-064 Protocol ------------------------------------ ###
+### -- Function to switch ON or OFF the answering machine and getting info about the answering machine -- ###
+### ----------------------------------------------------------------------------------------------------- ###
 
 TAM() {
 		location="/upnp/control/x_tam"
@@ -316,6 +374,11 @@ TAM() {
 
 		fi
 }
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------------ FUNCTION WLANstate - TR-064 Protocol --------------------------------- ###
+### ----- Function to switch ON or OFF 2.4 and/or 5 Ghz WiFi and also getting the state of the WiFi ----- ###
+### ----------------------------------------------------------------------------------------------------- ###
 
 WLANstate() {
 
@@ -350,6 +413,11 @@ WLANstate() {
 	fi
 }
 
+### ----------------------------------------------------------------------------------------------------- ###
+### --------------------------- FUNCTION RepeaterWLANstate - TR-064 Protocol ---------------------------- ###
+### -------------------------- Function to switch OFF the WiFi of the repeater -------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
 RepeaterWLANstate() {
 
 	# Building the inputs for the SOAP Action
@@ -360,6 +428,11 @@ RepeaterWLANstate() {
 	echo "Sending Repeater WLAN $1"; curl -k -m 5 --anyauth -u "$RepeaterUSER:$RepeaterPW" "http://$RepeaterIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewEnable>$option2</NewEnable></u:$action></s:Body></s:Envelope>" -s > /dev/null
 
 }
+
+### ----------------------------------------------------------------------------------------------------- ###
+### --------------------------------- FUNCTION Reboot - TR-064 Protocol --------------------------------- ###
+### ------------------------ Function to reboot the Fritz!Box or Fritz!Repeater ------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
 
 Reboot() {
 
