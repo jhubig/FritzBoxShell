@@ -86,18 +86,27 @@ cURL needs to be installed on your machine.
 ```
 sudo apt-get install curl
 ```
-Copy the fritzBoxShell.sh to your desired location (In my personal use case, I put it on a Raspberry Pi) and apply following permissions for the file:
+Download the latest release (https://github.com/jhubig/FritzBoxShell/releases). Unpack it in your desired location (in my personal use case, I put it on a Raspberry Pi). Apply the following permissions for the files:
 
 ```
 chmod 755 fritzBoxShell.sh
 chmod 755 fritzBoxShellTest.sh
 ```
-## Configuration
+## Configuration of Fritz!Box / Fritz!Repeater for TR-064 interface
 
-The file fritzBoxShellConfig.sh contains all Information pertaining to endpoints and credentials. You can
-choose to adjust it or you can choose to give this information as environment variables at the start of the script.
-If you choose to use environment variables, you need not comment or delete anything in fritzBoxShellConfig.sh -
-environment variables alway take precedence over the contents of fritzBoxShellConfig.sh.
+To be able to use the the TR-064 interface, it has to be activated on the Fritz!Box:
+
+![FritzBox_Activation_TR064.png](img/FritzBox_Activation_TR064.png?raw=true "FritzBox_Activation_TR064.png")
+
+In addition, a user needs to be available or created. This user needs to have access to Fritz!Box settings:
+
+![FritzBox_CreateUser_TR064.png](img/FritzBox_CreateUser_TR064.png?raw=true "FritzBox_CreateUser_TR064.png")
+
+## Configuration Script
+
+The file fritzBoxShellConfig.sh contains all Information pertaining to endpoints (ip address of your Fritz!Box and/or Fritz!Repeater) and credentials (usernames and passwords). You can choose to adjust it or you can choose to give this information as environment variables at the start of the script.
+
+If you choose to use environment variables, you do not need to comment or delete anything in fritzBoxShellConfig.sh - environment variables alway take precedence over the contents of fritzBoxShellConfig.sh.
 
 Calling fritzBoxShell.sh using environment variables could look like this:
 
