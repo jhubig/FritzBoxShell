@@ -86,7 +86,7 @@ cURL needs to be installed on your machine.
 ```
 sudo apt-get install curl
 ```
-Download the latest release (https://github.com/jhubig/FritzBoxShell/releases). Unpack it in your desired location (in my personal use case, I put it on a Raspberry Pi). Apply the following permissions for the files:
+Download the latest release (https://github.com/jhubig/FritzBoxShell/releases/latest). Unpack it in your desired location (in my personal use case, I put it on a Raspberry Pi). Apply the following permissions for the files:
 
 ```
 chmod 755 fritzBoxShell.sh
