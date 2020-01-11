@@ -499,7 +499,10 @@ then
   DisplayArguments
 elif [ -z "$2" ]
 then
-	DisplayArguments
+        if [ "${option1^^}" = "VERSION" ]; then
+                script_version
+        else DisplayArguments
+        fi
 else
 	#If argument was provided, check which function to be called
 	if [ "$option1" = "WLAN_2G" ] || [ "$option1" = "WLAN_5G" ] || [ "$option1" = "WLAN" ]; then
@@ -559,9 +562,7 @@ else
 		else DisplayArguments
 		fi
 	elif [ "$option1" = "REBOOT" ]; then
-		Reboot "$option2";
-	elif [ "${option1^^}" = "VERSION" ]; then
-		script_version
+		Reboot "$option2"
 	else DisplayArguments
 	fi
 fi
