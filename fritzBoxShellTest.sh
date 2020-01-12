@@ -28,6 +28,6 @@ do
 	[[ "$words" -ge ${minwords[$counter]} ]] && echo -e "\tis working!" || echo -e "\tis not working!"
 	counter=$((counter+1))
 done
-/bin/bash "$DIRECTORY/fritzBoxShell.sh" Deviceinfo 3 | grep NewModelName
-/bin/bash "$DIRECTORY/fritzBoxShell.sh" Deviceinfo 3 | grep NewSoftwareVersion
-/bin/bash "$DIRECTORY/fritzBoxShell.sh" Version
+/bin/bash "$DIRECTORY/fritzBoxShell.sh" DEVICEINFO 3 | grep NewModelName
+/bin/bash "$DIRECTORY/fritzBoxShell.sh" DEVICEINFO 3 | grep NewSoftwareVersion
+/bin/bash "$DIRECTORY/fritzBoxShell.sh" VERSION

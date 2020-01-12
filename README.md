@@ -150,6 +150,7 @@ Example (Deactivates the 5Ghz on your FritzBox):
 | REBOOT | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater |
 | UPNPMetaData | STATE or <filename> | Full unformatted output of tr64desc.xml to console or file |
 | IGDMetaData | STATE or <filename> | Full unformatted output of igddesc.xml to console or file |
+| VERSION | <N/A> | Version of the fritzBoxShell.sh |
 
 ### Notes:
 

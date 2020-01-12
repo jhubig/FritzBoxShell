@@ -463,7 +463,7 @@ DisplayArguments() {
 	echo "|  Action      | Parameter              | Description                                                             |"
 	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
 	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| DeviceInfo   | STATE                  | Show information about your Fritz!Box like ModelName, SN, etc.          |"
+	echo "| DEVICEINFO   | STATE                  | Show information about your Fritz!Box like ModelName, SN, etc.          |"
 	echo "| WLAN_2G      | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi             |"
 	echo "| WLAN_2G      | STATISTICS             | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf           |"
 	echo "| WLAN_5G      | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 5 Ghz WiFi               |"
@@ -499,7 +499,7 @@ then
   DisplayArguments
 elif [ -z "$2" ]
 then
-        if [ "${option1^^}" = "VERSION" ]; then
+        if [ "$option1" = "VERSION" ]; then
                 script_version
         else DisplayArguments
         fi
@@ -548,7 +548,7 @@ else
 		UPNPMetaData "$option2";
 	elif [ "$option1" = "IGDMetaData" ]; then
 		IGDMetaData "$option2";
-	elif [ "${option1^^}" = "DEVICEINFO" ]; then
+	elif [ "$option1" = "DEVICEINFO" ]; then
 		Deviceinfo "$option2";
 	elif [ "$option1" = "LED" ]; then
 		LEDswitch "$option2";
