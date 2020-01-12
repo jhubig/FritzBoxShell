@@ -24,6 +24,8 @@
 # the web password (password used to login in Fritz!Box)
 # is needed. New variable added in fritzBoxShellConfig.sh.
 
+version=1.0.3
+
 dir=$(dirname "$0")
 
 DIRECTORY=$(cd "$dir" && pwd)
@@ -445,6 +447,14 @@ Reboot() {
 	if [[ "$option2" = "Repeater" ]]; then echo "Sending Reboot command to $1"; curl -k -m 5 --anyauth -u "$RepeaterUSER:$RepeaterPW" "http://$RepeaterIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" -s > /dev/null; fi
 }
 
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------------------- FUNCTION script_version --------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+script_version(){
+		echo "fritzBoxShell.sh version ${version}"
+}
+
 DisplayArguments() {
 	echo ""
 	echo "Invalid Action and/or parameter. Possible combinations:"
@@ -478,6 +488,8 @@ DisplayArguments() {
 	echo "| UPNPMetaData | STATE or <filename>    | Full unformatted output of tr64desc.xml to console or file              |"
 	echo "| IGDMetaData  | STATE or <filename>    | Full unformatted output of igddesc.xml to console or file               |"
 	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| VERSION      |                        | Version of the fritzBoxShell.sh                                         |"
+	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
 	echo ""
 }
 
@@ -487,7 +499,10 @@ then
   DisplayArguments
 elif [ -z "$2" ]
 then
-	DisplayArguments
+        if [ "${option1^^}" = "VERSION" ]; then
+                script_version
+        else DisplayArguments
+        fi
 else
 	#If argument was provided, check which function to be called
 	if [ "$option1" = "WLAN_2G" ] || [ "$option1" = "WLAN_5G" ] || [ "$option1" = "WLAN" ]; then
@@ -533,7 +548,7 @@ else
 		UPNPMetaData "$option2";
 	elif [ "$option1" = "IGDMetaData" ]; then
 		IGDMetaData "$option2";
-	elif [ "$option1" = "Deviceinfo" ]; then
+	elif [ "${option1^^}" = "DEVICEINFO" ]; then
 		Deviceinfo "$option2";
 	elif [ "$option1" = "LED" ]; then
 		LEDswitch "$option2";

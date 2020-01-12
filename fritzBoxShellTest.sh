@@ -30,3 +30,4 @@ do
 done
 /bin/bash "$DIRECTORY/fritzBoxShell.sh" Deviceinfo 3 | grep NewModelName
 /bin/bash "$DIRECTORY/fritzBoxShell.sh" Deviceinfo 3 | grep NewSoftwareVersion
+/bin/bash "$DIRECTORY/fritzBoxShell.sh" Version
