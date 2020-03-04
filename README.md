@@ -63,53 +63,14 @@ Here you can find more information on TR-064 protocol and the available actions 
 * https://wiki.fhem.de/wiki/FRITZBOX#TR-064
 * https://avm.de/service/schnittstellen/
 
-## Installing
+## Installing, configuring and first script execution
 
-cURL needs to be installed on your machine.
-
-```
-sudo apt-get install curl
-```
-Download the latest release (https://github.com/jhubig/FritzBoxShell/releases/latest). Unpack it in your desired location (in my personal use case, I put it on a Raspberry Pi). Apply the following permissions for the files:
-
-```
-chmod 755 fritzBoxShell.sh
-chmod 755 fritzBoxShellTest.sh
-```
-## Configuration of Fritz!Box / Fritz!Repeater for TR-064 interface
-
-To be able to use the the TR-064 interface, it has to be activated on the Fritz!Box:
-
-![FritzBox_Activation_TR064.png](img/FritzBox_Activation_TR064.png?raw=true "FritzBox_Activation_TR064.png")
-
-In addition, a user needs to be available or created. This user needs to have access to Fritz!Box settings:
-
-![FritzBox_CreateUser_TR064.png](img/FritzBox_CreateUser_TR064.png?raw=true "FritzBox_CreateUser_TR064.png")
-
-## Configuration Script
-
-The file fritzBoxShellConfig.sh contains all Information pertaining to endpoints (ip address of your Fritz!Box and/or Fritz!Repeater) and credentials (usernames and passwords). You can choose to adjust it or you can choose to give this information as environment variables at the start of the script.
-
-If you choose to use environment variables, you do not need to comment or delete anything in fritzBoxShellConfig.sh - environment variables alway take precedence over the contents of fritzBoxShellConfig.sh.
-
-Calling fritzBoxShell.sh using environment variables could look like this:
-
-```
-BoxUSER=YourUser BoxPW=YourPassword WebPW=YourPassword ./fritzBoxShell.sh <ACTION> <PARAMETER>
-```
+Head over to the Wiki pages to get all the information: https://github.com/jhubig/FritzBoxShell/wiki/Installation,-Configuration-&-First-test
 
 ## Usage
 
-Just start the script and add the action and parameters:
+After the successful installation and setup following functions should be available.
 
-```
-./fritzBoxShell.sh <ACTION> <PARAMETER>
-```
-
-Example (Deactivates the 5Ghz on your FritzBox):
-
-```
-./fritzBoxShell.sh WLAN_5G 0
 ```
 
 | Action | Parameter | Description |
