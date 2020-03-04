@@ -27,22 +27,6 @@ To change state of the LEDs in front of the Fritz!Box the TR-064 protocol does n
 
 Please raise an issue with your function you would like to add.
 
-This package was tested on
-* OK: Fritz!Box 7490, with firmware version `7.12`
-* OK: Fritz!Repeater 310, with firmware version `7.12`
-  * everything concerning Wifi works as expected
-  * nothing else works (also as expected because - it is no Fritz!Box)
-
-After the fork (pull request #2), it has solely been tested on
-* FRITZ!Box 6490 Cable (kdg) with firmware version `06.87`
-  * DSL not working
-  * WAN partly working (rates are always 0)
-  * WANDSLLINK not working
-* FRITZ!WLAN Repeater DVB-C with firmware version `06.92`
-  * everything concerning Wifi works as expected
-  * nothing else works (also as expected because - it is no Fritz!Box)
-  * no information pertaining DVB-C is provided via TR064
-
 ### Become a part of it!
 
 If you want to check out if your AVM device actually works with this script, you can do so by executing `fritzBoxShellTest.sh`. It prints for (almost) every Service/Action pair if they delivered data when called.
@@ -156,58 +140,3 @@ Example (Deactivates the 5Ghz on your FritzBox):
 
 * Script will only work if device from where the script is called is in the same network (same WiFi, LAN or VPN connection)
 * Not possible to switch ON the Fritz!Repeater after it has been switched OFF. This only works on Fritz!Box if still 2,4Ghz or 5Ghz is active or VPN connection to Fritz!Box is established
-
-### Example Use case
-
-Currently I'm using the script (located on my RaspberryPi which is always connected to my router via ethernet) combined with Workflow (https://itunes.apple.com/de/app/workflow/id915249334?mt=8) on my iPhone/iPad. Workflow offers the possibility to send SSH commands directly to your raspberry or to any other SSH capable device. After creating the workflow itself, I have added them to the Today Widget view for faster access.
-
-![iOS_Workflow_SSH.png](img/iOS_Workflow_SSH.png?raw=true "iOS_Workflow_SSH.png")
-
-### Example Use with Telegraf
-Suppose, you want to visualize the overall Download Rate of your FritzBox: The way to go here is to use the Action IGDWAN with parameter STATE. It gives (for example) this output:
-
-```
-NewByteSendRate 265
-NewByteReceiveRate 17
-NewPacketSendRate 0
-NewPacketReceiveRate 0
-NewTotalBytesSent 0
-NewTotalBytesReceived 0
-NewAutoDisconnectTime 0
-NewIdleDisconnectTime 0
-NewDNSServer1 83.169.186.33
-NewDNSServer2 83.169.186.97
-NewVoipDNSServer1 83.169.186.33
-NewVoipDNSServer2 83.169.186.97
-NewUpnpControlEnabled 0
-NewRoutedBridgedModeBoth 1
-
-```
-
-The important line here is the one with `NewByteReceiveRate` in it. If we augment the script execution with some pipe magic, we get exactly
-the Download Rate value:
-
-```
-BoxUSER=YourUser BoxPW=YourPassword /opt/telegraf/FritzBoxShell/fritzBoxShell.sh IGDWAN STATE|grep NewByteReceiveRate|cut -d ' ' -f 2
-```
-
-Now - how to get this measurement into Telegraf? Well, Telegraf has an `exec` input that allows us to inject one measurement with a specific value. It looks like [this](https://github.com/influxdata/telegraf/tree/master/plugins/inputs/exec):
-```
-[[inputs.exec]]
-  commands = ["<some command>"]
-  name_override = "fritzbox_byte_receive_rate"
-  data_format = "value"
-  data_type = "integer"
-```
-
-Now for the ugly truth: we can not use the command shown earlier for where it says `some command` - we must instead use some simple bash logic:
-```
-[[inputs.exec]]
-  commands = ["/bin/bash -c \"BoxUSER=YourUser BoxPW=YourPassword /opt/telegraf/FritzBoxShell/fritzBoxShell.sh IGDWAN STATE|grep NewByteReceiveRate|cut -d ' ' -f 2\"" ]
-  name_override = "fritzbox_byte_receive_rate"
-  data_format = "value"
-  data_type = "integer"
-```
-
-#### Note
-Data with huge absolute values probably dont fit into type `integer` - in this case, `long` is the way to go...
