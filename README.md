@@ -62,8 +62,6 @@ Head over to the Wiki pages to get all the information: https://github.com/jhubi
 
 After the successful installation and setup following functions should be available.
 
-```
-
 | Action | Parameter | Description |
 | --- | --- | --- |
 | WLAN_2G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi |
