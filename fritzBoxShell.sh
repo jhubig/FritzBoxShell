@@ -109,7 +109,9 @@ LEDswitch(){
 
 	# Send the login and get the SID (Session ID)
 	SID=`wget -O - "http://$BoxIP/login_sid.lua?$URL_PARAMS" 2>/dev/null | sed 's/.*<SID>\(.*\)<\/SID>.*/\1/'`
-	#echo SID=$SID
+
+	# If no valid SID is received, then  IP or web password is probably not correct
+	if [ "$SID" = "" ]; then echo "No valid login. Wrong IP or web password?";return 1; fi
 
 	if [ "$option2" = "0" ]; then LEDstate=2; fi # When
 	if [ "$option2" = "1" ]; then LEDstate=0; fi
