@@ -62,7 +62,7 @@ Head over to the Wiki pages to get all the information: https://github.com/jhubi
 
 You can use variables or arguments. However, arguments are visible in the process list and are therefore not recommended for passwords.
 
-| Enviroment | Argument | Dicreption |
+| Enviroment | Argument | Description |
 |---|---|---|
 | BoxIP | --boxip | IP or DNS of FritzBox |
 | BoxUSER | --boxuser | Username |
