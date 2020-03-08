@@ -58,6 +58,20 @@ NewSoftwareVersion 141.06.87
 
 Head over to the Wiki pages to get all the information: https://github.com/jhubig/FritzBoxShell/wiki/Installation,-Configuration-&-First-test
 
+## Arguments/Enviroments
+
+You can use variables or arguments. However, arguments are visible in the process list and are therefore not recommended for passwords.
+
+| Enviroment | Argument | Dicreption |
+|---|---|---|
+| BoxIP | --boxip | IP or DNS of FritzBox |
+| BoxUSER | --boxuser | Username |
+| BoxPW | --boxpw | Login password for user. |
+| WebPW | --webpw | This is the web password which is needed for sending HTTP requests. Therefore only the web password is needed without an username. |
+| RepeaterIP | --repeaterip | IP or DNS of FritzRepeater |
+| RepeaterUSER | --repeateruser | Usually on Fritz!Repeater no User is existing. Can be left empty. |
+| RepeaterPW | --repeaterpw | Password for user. |
+
 ## Usage
 
 After the successful installation and setup following functions should be available.

@@ -35,6 +35,51 @@ source "$DIRECTORY/fritzBoxShellConfig.sh"
 #*********************** SCRIPT ***********************#
 #******************************************************#
 
+# Parsing arguments
+# Example:
+# ./fritzBoxShell.sh --boxip 192.168.178.1 --boxuser foo --boxpw baa WLAN_2G 1
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  key="$1"
+
+  case $key in
+		--boxip)
+    BoxIP="$2"
+    shift ; shift
+    ;;
+		--boxuser)
+    BoxUSER="$2"
+    shift ; shift
+    ;;
+		--boxpw)
+    BoxPW="$2"
+    shift ; shift
+    ;;
+		--webpw)
+    WebPW="$2"
+    shift ; shift
+    ;;
+		--repeaterip)
+    RepeaterIP="$2"
+    shift ; shift
+    ;;
+		--repeateruser)
+    RepeaterUSER="$2"
+    shift ; shift
+    ;;
+		--repeaterpw)
+    RepeaterPW="$2"
+    shift ; shift
+    ;;
+		*)    # unknown option
+    POSITIONAL+=("$1") # save it in an array for later
+    shift # past argument
+    ;;
+  esac
+done
+
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
 # Storing shell parameters in variables
 # Example:
 # ./fritzBoxShell.sh WLAN_2G 1
