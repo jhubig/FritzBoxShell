@@ -62,6 +62,12 @@ Head over to the Wiki pages to get all the information: https://github.com/jhubi
 
 You can use variables or arguments. However, arguments are visible in the process list and are therefore not recommended for passwords.
 
+If these arguments or environment variables are not set, then the values from the fritzBoxShellConfig.sh are used.
+
+Here an example (This will enable the 2.4 Ghz network on the box with the following IP):
+
+`./fritzBoxShell.sh --boxip 192.168.178.1 --boxuser foo --boxpw baa WLAN_2G 1`
+
 | Enviroment | Argument | Description |
 |---|---|---|
 | BoxIP | --boxip | IP or DNS of FritzBox |
