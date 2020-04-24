@@ -23,7 +23,7 @@
 The script allows you to control/check your FritzBox from the terminal with a shell script. It is planned to add more functions in the future.
 The shell script uses cURL to create an SOAP request based on the TR-064 protocol to talk to the AVM Fritz!Box and AVM Fritz!Repeater.
 
-To change state of the LEDs in front of the Fritz!Box the TR-064 protocol does not offer the possibility. Therefore the AHA-HTTP-Interface is used. This only works from firmware version `7.10` and upwards.
+To change state of the LEDs in front of the Fritz!Box or activate the keylock (buttons on the can be activated or deactivated) the TR-064 protocol does not offer the possibility. Therefore the AHA-HTTP-Interface is used. This only works from firmware version `7.10` and upwards.
 
 Please raise an issue with your function you would like to add.
 
@@ -92,6 +92,8 @@ After the successful installation and setup following functions should be availa
 | TAM | <index> and ON or OFF | e.g. TAM 0 ON (switches ON the answering machine) |
 | TAM | <index> and GetMsgs | e.g. TAM 0 GetMsgs (gives XML formatted list of messages) |
 | LED | 0 or 1 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box |
+| LED | 0 or 1 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box |
+| KEYLOCK | 0 or 1 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated) |
 | LAN | STATE | Statistics for the LAN easily digestible by telegraf |
 | DSL | STATE | Statistics for the DSL easily digestible by telegraf |
 | WAN | STATE | Statistics for the WAN easily digestible by telegraf |
@@ -118,3 +120,5 @@ Here you can find more information on TR-064 protocol and the available actions 
 * http://fritz.repeater:49000/tr64desc.xml
 * https://wiki.fhem.de/wiki/FRITZBOX#TR-064
 * https://avm.de/service/schnittstellen/
+
+AVM, FRITZ!, Fritz!Box and the FRITZ! logo are registered trademarks of AVM GmbH - https://avm.de/

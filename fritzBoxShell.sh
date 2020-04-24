@@ -18,7 +18,10 @@
 # https://wiki.fhem.de/wiki/FRITZBOX#TR-064
 # https://avm.de/service/schnittstellen/
 
-version=1.0.3
+# AVM, FRITZ!, Fritz!Box and the FRITZ! logo are registered trademarks of AVM GmbH - https://avm.de/
+
+
+version=1.0.4
 
 dir=$(dirname "$0")
 
@@ -104,11 +107,8 @@ getSID(){
 ### ----------------------------------------------------------------------------------------------------- ###
 
 LEDswitch(){
-	# Collect the challenge
+	# Get the a valid SID
 	getSID
-
-	# If no valid SID is received, then  IP or web password is probably not correct
-	if [ "$SID" = "" ]; then echo "No valid login. Wrong IP or web password?";return 1; fi
 
 	if [ "$option2" = "0" ]; then LEDstate=2; fi # When
 	if [ "$option2" = "1" ]; then LEDstate=0; fi
@@ -119,6 +119,24 @@ LEDswitch(){
 	wget -O - --post-data sid=$SID\&led_display=$LEDstate\&apply= http://$BoxIP/system/led_display.lua 2>/dev/null
 	if [ "$option2" = "0" ]; then echo "LEDs switched OFF"; fi
 	if [ "$option2" = "1" ]; then echo "LEDs switched ON"; fi
+
+	# Logout the "used" SID
+	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
+### --------- FUNCTION keyLockSwitch FOR ACTIVATING or DEACTIVATING the buttons on the Fritz!Box -------- ###
+### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+keyLockSwitch(){
+	# Get the a valid SID
+	getSID
+	wget -O - --post-data sid=$SID\&keylock_enabled=$option2\&apply= http://$BoxIP/system/keylocker.lua 2>/dev/null
+	if [ "$option2" = "0" ]; then echo "KeyLock NOT active"; fi
+	if [ "$option2" = "1" ]; then echo "KeyLock active"; fi
 
 	# Logout the "used" SID
 	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
@@ -519,6 +537,7 @@ DisplayArguments() {
 	echo "| TAM          | <index> and GetMsgs    | e.g. TAM 0 GetMsgs (gives XML formatted list of messages)               |"
 	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
 	echo "| LED          | 0 or 1                 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box          |"
+	echo "| KEYLOCK      | 0 or 1                 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated)   |"
 	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
 	echo "| LAN          | STATE                  | Statistics for the LAN easily digestible by telegraf                    |"
 	echo "| DSL          | STATE                  | Statistics for the DSL easily digestible by telegraf                    |"
@@ -596,6 +615,8 @@ else
 		Deviceinfo "$option2";
 	elif [ "$option1" = "LED" ]; then
 		LEDswitch "$option2";
+	elif [ "$option1" = "KEYLOCK" ]; then
+		keyLockSwitch "$option2";
 	elif [ "$option1" = "TAM" ]; then
 		if [[ $option2 =~ ^[+-]?[0-9]+$ ]] && { [ "$option3" = "GetInfo" ] || [ "$option3" = "ON" ] || [ "$option3" = "OFF" ] || [ "$option3" = "GetMsgs" ];}; then TAM
 		else DisplayArguments
