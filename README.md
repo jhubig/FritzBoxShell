@@ -92,7 +92,6 @@ After the successful installation and setup following functions should be availa
 | TAM | <index> and ON or OFF | e.g. TAM 0 ON (switches ON the answering machine) |
 | TAM | <index> and GetMsgs | e.g. TAM 0 GetMsgs (gives XML formatted list of messages) |
 | LED | 0 or 1 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box |
-| LED | 0 or 1 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box |
 | KEYLOCK | 0 or 1 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated) |
 | LAN | STATE | Statistics for the LAN easily digestible by telegraf |
 | DSL | STATE | Statistics for the DSL easily digestible by telegraf |
