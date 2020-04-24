@@ -23,7 +23,7 @@
 The script allows you to control/check your FritzBox from the terminal with a shell script. It is planned to add more functions in the future.
 The shell script uses cURL to create an SOAP request based on the TR-064 protocol to talk to the AVM Fritz!Box and AVM Fritz!Repeater.
 
-To change state of the LEDs in front of the Fritz!Box the TR-064 protocol does not offer the possibility. Therefore the AHA-HTTP-Interface is used. To be able to access it, the web password (password used to login in Fritz!Box) is needed. New variable (WebPW) added in fritzBoxShellConfig.sh. This only works from firmware version `7.10` and upwards.
+To change state of the LEDs in front of the Fritz!Box the TR-064 protocol does not offer the possibility. Therefore the AHA-HTTP-Interface is used. This only works from firmware version `7.10` and upwards.
 
 Please raise an issue with your function you would like to add.
 
@@ -73,7 +73,6 @@ Here an example (This will enable the 2.4 Ghz network on the box with the follow
 | BoxIP | --boxip | IP or DNS of FritzBox |
 | BoxUSER | --boxuser | Username |
 | BoxPW | --boxpw | Login password for user. |
-| WebPW | --webpw | This is the web password which is needed for sending HTTP requests. Therefore only the web password is needed without an username. |
 | RepeaterIP | --repeaterip | IP or DNS of FritzRepeater |
 | RepeaterUSER | --repeateruser | Usually on Fritz!Repeater no User is existing. Can be left empty. |
 | RepeaterPW | --repeaterpw | Password for user. |

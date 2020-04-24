@@ -17,12 +17,6 @@
 # http://fritz.box:49000/tr64desc.xml
 # https://wiki.fhem.de/wiki/FRITZBOX#TR-064
 # https://avm.de/service/schnittstellen/
-#
-# To change state of the LEDs in front of the Fritz!Box the
-# TR-064 protocol does not offer the possibility. Therefore
-# the AHA-HTTP-Interface is used. To be able to access it,
-# the web password (password used to login in Fritz!Box)
-# is needed. New variable added in fritzBoxShellConfig.sh.
 
 version=1.0.3
 
@@ -53,10 +47,6 @@ while [[ $# -gt 0 ]]; do
     ;;
 		--boxpw)
     BoxPW="$2"
-    shift ; shift
-    ;;
-		--webpw)
-    WebPW="$2"
     shift ; shift
     ;;
 		--repeaterip)
@@ -91,24 +81,31 @@ option2="$2"
 option3="$3"
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### --------- FUNCTION getSID is used to get a SID for all requests through AHA-HTTP-Interface----------- ###
+### ------------------------------- SID is stored then in global variable ------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+# Global variable for SID
+SID=""
+
+getSID(){
+  location="/upnp/control/deviceconfig"
+  uri="urn:dslforum-org:service:DeviceConfig:1"
+  action='X_AVM-DE_CreateUrlSID'
+
+  SID=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep "NewX_AVM-DE_UrlSID" | awk -F">" '{print $2}' | awk -F"<" '{print $1}' | awk -F"=" '{print $2}')
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### ----------- FUNCTION LEDswitch FOR SWITCHING ON OR OFF THE LEDS IN front of the Fritz!Box ----------- ###
-### --- Here the TR-064 protocol cannot be used. Therefore different login mechanism needed with SID ---- ###
+### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
 ### ----------------------------------------------------------------------------------------------------- ###
 ### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
 
 LEDswitch(){
 	# Collect the challenge
-	CHALLENGE=`wget -O - "http://$BoxIP/login_sid.lua" 2>/dev/null | sed 's/.*<Challenge>\(.*\)<\/Challenge>.*/\1/'`
-
-	# Built up the login and hash it
-	CPSTR="$CHALLENGE-$WebPW"
-	MD5=`echo -n $CPSTR | iconv -f ISO8859-1 -t UTF-16LE | md5sum -b | awk '{print substr($0,1,32)}'`
-	RESPONSE="$CHALLENGE-$MD5"
-	URL_PARAMS="response=$RESPONSE"
-
-	# Send the login and get the SID (Session ID)
-	SID=`wget -O - "http://$BoxIP/login_sid.lua?$URL_PARAMS" 2>/dev/null | sed 's/.*<SID>\(.*\)<\/SID>.*/\1/'`
+	getSID
 
 	# If no valid SID is received, then  IP or web password is probably not correct
 	if [ "$SID" = "" ]; then echo "No valid login. Wrong IP or web password?";return 1; fi
