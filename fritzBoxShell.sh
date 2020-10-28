@@ -235,7 +235,7 @@ LANstate() {
 ### ----------------------------------------------------------------------------------------------------- ###
 
 DSLstate() {
-		location="/igdupnp/control/wandslifconfig1"
+		location="/upnp/control/wandslifconfig1"
 		uri="urn:dslforum-org:service:WANDSLInterfaceConfig:1"
 		action='GetInfo'
 
@@ -292,9 +292,14 @@ WANDSLLINKstate() {
 ### ------------------------------ FUNCTION IGDWANstate - TR-064 Protocol ------------------------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
 
+#TODO!!!
+#https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/IGD1.pdf
+#GetAddonInfos icon is declare but cannot find it into
+#http://192.168.0.1:49000/wancommonifconfigSCPD.xml
+
 IGDWANstate() {
-		location="/igdupnp/control/WANCommonIFC1"
-		uri="urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1"
+		location="/upnp/control/wancommonifconfig1"
+		uri="urn:dslforum-org:service:WANCommonInterfaceConfig:1"
 		action='GetAddonInfos'
 
 		readout
@@ -306,8 +311,8 @@ IGDWANstate() {
 ### ----------------------------------------------------------------------------------------------------- ###
 
 IGDDSLLINKstate() {
-		location="/igdupnp/control/WANDSLLinkC1"
-		uri="urn:schemas-upnp-org:service:WANDSLLinkConfig:1"
+		location="/upnp/control/wandsllinkconfig1"
+		uri="urn:dslforum-org:service:WANDSLLinkConfig:1"
 		action='GetDSLLinkInfo'
 
 		readout
@@ -339,8 +344,8 @@ IGDDSLLINKstate() {
 ### ----------------------------------------------------------------------------------------------------- ###
 
 IGDIPstate() {
-		location="/igdupnp/control/WANIPConn1"
-		uri="urn:schemas-upnp-org:service:WANIPConnection:1"
+		location="/upnp/control/wanipconnection1"
+		uri="urn:dslforum-org:service:WANIPConnection:1"
 		action='GetConnectionTypeInfo'
 
 		readout
