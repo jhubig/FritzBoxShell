@@ -177,6 +177,25 @@ IGDMetaData(){
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### ---- FUNCTION getWLANGUESTNum returns WLAN-Guest service number (if available) - TR-064 Protocol ---- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+getWLANGUESTNum() {
+    for wlanNum in {2..4}; do
+        location="/upnp/control/wlanconfig$wlanNum"
+        uri="urn:dslforum-org:service:WLANConfiguration:$wlanNum"
+        action="X_AVM-DE_GetWLANExtInfo"
+
+        wlanType=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewX_AVM-DE_APType | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+
+        if [ "$wlanType" = "guest" ]; then
+            echo $wlanNum
+			break
+        fi
+    done
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### ----------------------- FUNCTION WLANstatistics for 2.4 Ghz - TR-064 Protocol ----------------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
 
@@ -216,6 +235,31 @@ WLAN5statistics() {
 
 		readout
 		echo "NewGHz 5"
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
+### -------------------- FUNCTION WLANstatistics for Guest Network - TR-064 Protocol -------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+WLANGUESTstatistics() {
+		wlanNum=$(getWLANGUESTNum)
+		if [ -z $wlanNum ]; then
+			echo "Guest Network not available"
+		else
+			location="/upnp/control/wlanconfig$wlanNum"
+			uri="urn:dslforum-org:service:WLANConfiguration:$wlanNum"
+			action='GetStatistics'
+
+			readout
+
+			action='GetTotalAssociations'
+
+			readout
+
+			action='GetInfo'
+
+			readout
+		fi		
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -475,6 +519,25 @@ WLANstate() {
 			echo "  5 Ghz Network $curlOutput2 is $curlOutput1"
 		fi
 	fi
+
+	if [ "$option1" = "WLAN_GUEST" ] || [ "$option1" = "WLAN" ]; then
+		wlanNum=$(getWLANGUESTNum)
+		if [ -z $wlanNum ]; then
+			echo "Guest Network not available"
+		else
+			location="/upnp/control/wlanconfig$wlanNum"
+			uri="urn:dslforum-org:service:WLANConfiguration:$wlanNum"
+			action='SetEnable'
+			if [ "$option2" = "0" ] || [ "$option2" = "1" ]; then echo "Sending WLAN_GUEST $1"; curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewEnable>$option2</NewEnable></u:$action></s:Body></s:Envelope>" -s > /dev/null; fi # Changing the state of the WIFI
+
+			action='GetInfo'
+			if [ "$option2" = "STATE" ]; then
+				curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewEnable | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+				curlOutput2=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewSSID | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+				echo "  Guest Network $curlOutput2 is $curlOutput1"
+			fi
+		fi
+	fi
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -530,6 +593,8 @@ DisplayArguments() {
 	echo "| WLAN_2G      | STATISTICS             | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf           |"
 	echo "| WLAN_5G      | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 5 Ghz WiFi               |"
 	echo "| WLAN_5G      | STATISTICS             | Statistics for the 5 Ghz WiFi easily digestible by telegraf             |"
+	echo "| WLAN_GUEST   | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the Guest WiFi               |"
+	echo "| WLAN_GUEST   | STATISTICS             | Statistics for the Guest WiFi easily digestible by telegraf             |"
 	echo "| WLAN         | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi    |"
 	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
 	echo "| TAM          | <index> and GetInfo    | e.g. TAM 0 GetInfo (gives info about answering machine)                 |"
@@ -568,13 +633,14 @@ then
         fi
 else
 	#If argument was provided, check which function to be called
-	if [ "$option1" = "WLAN_2G" ] || [ "$option1" = "WLAN_5G" ] || [ "$option1" = "WLAN" ]; then
+	if [ "$option1" = "WLAN_2G" ] || [ "$option1" = "WLAN_5G" ] || [ "$option1" = "WLAN_GUEST" ] || [ "$option1" = "WLAN" ]; then
 		if [ "$option2" = "1" ]; then WLANstate "ON";
 		elif [ "$option2" = "0" ]; then WLANstate "OFF";
 		elif [ "$option2" = "STATE" ]; then WLANstate "STATE";
 		elif [ "$option2" = "STATISTICS" ]; then
 			if [ "$option1" = "WLAN_2G" ]; then WLANstatistics;
 			elif [ "$option1" = "WLAN_5G" ]; then WLAN5statistics;
+			elif [ "$option1" = "WLAN_GUEST" ]; then WLANGUESTstatistics;
 			else DisplayArguments
 			fi
 		else DisplayArguments
