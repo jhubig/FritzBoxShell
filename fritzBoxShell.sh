@@ -279,7 +279,7 @@ LANstate() {
 ### ----------------------------------------------------------------------------------------------------- ###
 
 DSLstate() {
-		location="/igdupnp/control/wandslifconfig1"
+		location="/upnp/control/wandslifconfig1"
 		uri="urn:dslforum-org:service:WANDSLInterfaceConfig:1"
 		action='GetInfo'
 
