@@ -146,7 +146,7 @@ LEDswitch(){
 keyLockSwitch(){
 	# Get the a valid SID
 	getSID
-	wget -O - --post-data sid=$SID\&keylock_enabled=$option2\&apply= http://$BoxIP/system/keylocker.lua 2>/dev/null
+	wget -O - --post-data "sid=$SID&keylock_enabled=$option2&apply=" "http://$BoxIP/system/keylocker.lua" 2>/dev/null
 	if [ "$option2" = "0" ]; then echo "KeyLock NOT active"; fi
 	if [ "$option2" = "1" ]; then echo "KeyLock active"; fi
 
@@ -255,7 +255,7 @@ WLAN5statistics() {
 
 WLANGUESTstatistics() {
 		wlanNum=$(getWLANGUESTNum)
-		if [ -z $wlanNum ]; then
+		if [ -z "$wlanNum" ]; then
 			echo "Guest Network not available"
 		else
 			location="/upnp/control/wlanconfig$wlanNum"
@@ -489,7 +489,7 @@ TAM() {
 			curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewIndex>$option2</NewIndex></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p")
 
 			#WGETresult=$(wget -O - "$curlOutput1" 2>/dev/null) Doesn't work with double quotes. Therefore in line below the shellcheck fails.
-			WGETresult=$(wget -O - $curlOutput1 2>/dev/null)
+			WGETresult=$(wget -O - "$curlOutput1" 2>/dev/null)
 			echo "$WGETresult"
 
 		fi
@@ -534,7 +534,7 @@ WLANstate() {
 
 	if [ "$option1" = "WLAN_GUEST" ] || [ "$option1" = "WLAN" ]; then
 		wlanNum=$(getWLANGUESTNum)
-		if [ -z $wlanNum ]; then
+		if [ -z "$wlanNum" ]; then
 			echo "Guest Network not available"
 		else
 			location="/upnp/control/wlanconfig$wlanNum"
