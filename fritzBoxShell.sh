@@ -110,13 +110,25 @@ LEDswitch(){
 	# Get the a valid SID
 	getSID
 
-	if [ "$option2" = "0" ]; then LEDstate=2; fi # When
-	if [ "$option2" = "1" ]; then LEDstate=0; fi
-
 	# led_display=0 -> ON
 	# led_display=1 -> DELAYED ON (20200106: not really slower that option 0 - NOT USED)
 	# led_display=2 -> OFF
-	wget -O - --post-data sid=$SID\&led_display=$LEDstate\&apply= http://$BoxIP/system/led_display.lua 2>/dev/null
+	if [ "$option2" = "0" ]; then LEDstate=2; fi # When
+	if [ "$option2" = "1" ]; then LEDstate=0; fi
+
+	# Check if device supports LED dimming
+	json=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=led" "http://$BoxIP/data.lua" | tr -d '"')
+	if grep -q 'canDim:1' <<< "$json"
+	then
+		# Extract LED brightness
+		dim=$(grep -o 'dimValue:[[:digit:]]*' <<< "$json" | cut -d : -f 2)
+		[[ -z "$dim" || "$dim" -lt 1 || "$dim" -gt 3 ]] && dim=3
+
+		wget -O /dev/null --post-data "sid=$SID&led_brightness=$dim&dimValue=$dim&led_display=$LEDstate&ledDisplay=$LEDstate&page=led&apply=" "http://$BoxIP/data.lua" 2>/dev/null
+	else
+		wget -O - --post-data "sid=$SID&led_display=$LEDstate&apply=" "http://$BoxIP/system/led_display.lua" 2>/dev/null
+	fi
+
 	if [ "$option2" = "0" ]; then echo "LEDs switched OFF"; fi
 	if [ "$option2" = "1" ]; then echo "LEDs switched ON"; fi
 
@@ -259,7 +271,7 @@ WLANGUESTstatistics() {
 			action='GetInfo'
 
 			readout
-		fi		
+		fi
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
