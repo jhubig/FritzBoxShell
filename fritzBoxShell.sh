@@ -110,13 +110,25 @@ LEDswitch(){
 	# Get the a valid SID
 	getSID
 
-	if [ "$option2" = "0" ]; then LEDstate=2; fi # When
-	if [ "$option2" = "1" ]; then LEDstate=0; fi
-
 	# led_display=0 -> ON
 	# led_display=1 -> DELAYED ON (20200106: not really slower that option 0 - NOT USED)
 	# led_display=2 -> OFF
-	wget -O - --post-data sid=$SID\&led_display=$LEDstate\&apply= http://$BoxIP/system/led_display.lua 2>/dev/null
+	if [ "$option2" = "0" ]; then LEDstate=2; fi # When
+	if [ "$option2" = "1" ]; then LEDstate=0; fi
+
+	# Check if device supports LED dimming
+	json=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=led" "http://$BoxIP/data.lua" | tr -d '"')
+	if grep -q 'canDim:1' <<< "$json"
+	then
+		# Extract LED brightness
+		dim=$(grep -o 'dimValue:[[:digit:]]*' <<< "$json" | cut -d : -f 2)
+		[[ -z "$dim" || "$dim" -lt 1 || "$dim" -gt 3 ]] && dim=3
+
+		wget -O /dev/null --post-data "sid=$SID&led_brightness=$dim&dimValue=$dim&led_display=$LEDstate&ledDisplay=$LEDstate&page=led&apply=" "http://$BoxIP/data.lua" 2>/dev/null
+	else
+		wget -O - --post-data "sid=$SID&led_display=$LEDstate&apply=" "http://$BoxIP/system/led_display.lua" 2>/dev/null
+	fi
+
 	if [ "$option2" = "0" ]; then echo "LEDs switched OFF"; fi
 	if [ "$option2" = "1" ]; then echo "LEDs switched ON"; fi
 
@@ -134,7 +146,7 @@ LEDswitch(){
 keyLockSwitch(){
 	# Get the a valid SID
 	getSID
-	wget -O - --post-data sid=$SID\&keylock_enabled=$option2\&apply= http://$BoxIP/system/keylocker.lua 2>/dev/null
+	wget -O - --post-data "sid=$SID&keylock_enabled=$option2&apply=" "http://$BoxIP/system/keylocker.lua" 2>/dev/null
 	if [ "$option2" = "0" ]; then echo "KeyLock NOT active"; fi
 	if [ "$option2" = "1" ]; then echo "KeyLock active"; fi
 
@@ -243,7 +255,7 @@ WLAN5statistics() {
 
 WLANGUESTstatistics() {
 		wlanNum=$(getWLANGUESTNum)
-		if [ -z $wlanNum ]; then
+		if [ -z "$wlanNum" ]; then
 			echo "Guest Network not available"
 		else
 			location="/upnp/control/wlanconfig$wlanNum"
@@ -259,7 +271,7 @@ WLANGUESTstatistics() {
 			action='GetInfo'
 
 			readout
-		fi		
+		fi
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -477,7 +489,7 @@ TAM() {
 			curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewIndex>$option2</NewIndex></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p")
 
 			#WGETresult=$(wget -O - "$curlOutput1" 2>/dev/null) Doesn't work with double quotes. Therefore in line below the shellcheck fails.
-			WGETresult=$(wget -O - $curlOutput1 2>/dev/null)
+			WGETresult=$(wget -O - "$curlOutput1" 2>/dev/null)
 			echo "$WGETresult"
 
 		fi
@@ -522,7 +534,7 @@ WLANstate() {
 
 	if [ "$option1" = "WLAN_GUEST" ] || [ "$option1" = "WLAN" ]; then
 		wlanNum=$(getWLANGUESTNum)
-		if [ -z $wlanNum ]; then
+		if [ -z "$wlanNum" ]; then
 			echo "Guest Network not available"
 		else
 			location="/upnp/control/wlanconfig$wlanNum"
