@@ -126,7 +126,15 @@ LEDswitch(){
 
 		wget -O /dev/null --post-data "sid=$SID&led_brightness=$dim&dimValue=$dim&led_display=$LEDstate&ledDisplay=$LEDstate&page=led&apply=" "http://$BoxIP/data.lua" 2>/dev/null
 	else
-		wget -O - --post-data "sid=$SID&led_display=$LEDstate&apply=" "http://$BoxIP/system/led_display.lua" 2>/dev/null
+
+    # For newer FritzOS (>5.5)
+    if grep -q 'ledDisplay:' <<< "$json"
+    then
+      wget -O - --post-data "sid=$SID&apply=&page=led&ledDisplay=$LEDstate" "http://$BoxIP/data.lua" &>/dev/null
+    else
+      wget -O - --post-data "sid=$SID&led_display=$LEDstate&apply=" "http://$BoxIP/system/led_display.lua" &>/dev/null
+    fi
+
 	fi
 
 	if [ "$option2" = "0" ]; then echo "LEDs switched OFF"; fi
