@@ -125,15 +125,16 @@ LEDswitch(){
 		[[ -z "$dim" || "$dim" -lt 1 || "$dim" -gt 3 ]] && dim=3
 
 		wget -O /dev/null --post-data "sid=$SID&led_brightness=$dim&dimValue=$dim&led_display=$LEDstate&ledDisplay=$LEDstate&page=led&apply=" "http://$BoxIP/data.lua" 2>/dev/null
+
 	else
 
-    # For newer FritzOS (>5.5)
-    if grep -q 'ledDisplay:' <<< "$json"
-    then
-      wget -O - --post-data "sid=$SID&apply=&page=led&ledDisplay=$LEDstate" "http://$BoxIP/data.lua" &>/dev/null
-    else
-      wget -O - --post-data "sid=$SID&led_display=$LEDstate&apply=" "http://$BoxIP/system/led_display.lua" &>/dev/null
-    fi
+		# For newer FritzOS (>5.5)
+		if grep -q 'ledDisplay:' <<< "$json"
+		then
+			wget -O - --post-data "sid=$SID&apply=&page=led&ledDisplay=$LEDstate" "http://$BoxIP/data.lua" &>/dev/null
+		else
+			wget -O - --post-data "sid=$SID&led_display=$LEDstate&apply=" "http://$BoxIP/system/led_display.lua" &>/dev/null
+		fi
 
 	fi
 
@@ -163,11 +164,26 @@ LEDbrightness(){
 	json=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=led" "http://$BoxIP/data.lua" | tr -d '"')
 	if grep -q 'canDim:1' <<< "$json"
 	then
-		wget -O - --post-data "sid=$SID&apply=&page=led&dimValue=$option2&led_display=0" "http://$BoxIP/data.lua" #&>/dev/null
-  	echo "Brightness set to $option2"
-	else
-    echo "Brightness setting on this FritzBox not possible."
+		# Extract LED state
+		display=$(grep -o 'ledDisplay:[[:digit:]]*' <<< "$json" | cut -d : -f 2)
+		[[ -z "$display" || "$display" -lt 0 || "$display" -gt 2 ]] && display=0
 
+		# Extract LED brightness
+		dim=$(grep -o 'dimValue:[[:digit:]]*' <<< "$json" | cut -d : -f 2)
+		[[ -z "$dim" || "$dim" -lt 1 || "$dim" -gt 3 ]] && dim=3
+
+		if [ "$option2" -eq 0 ]
+		then
+			display=2
+		else
+			display=0
+			dim=$option2
+		fi
+
+		wget -O /dev/null --post-data "sid=$SID&led_brightness=$dim&dimValue=$dim&led_display=$display&ledDisplay=$display&page=led&apply=" "http://$BoxIP/data.lua" 2>/dev/null
+		echo "Brightness set to $dim; LEDs switched $(if [ "$display" -eq 2 ]; then echo "OFF"; else echo "ON"; fi)"
+	else
+		echo "Brightness setting on this FritzBox not possible."
 	fi
 
 	# Logout the "used" SID
@@ -719,7 +735,7 @@ DisplayArguments() {
 	echo "| TAM            | <index> and GetMsgs    | e.g. TAM 0 GetMsgs (gives XML formatted list of messages)               |"
 	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
 	echo "| LED            | 0 or 1                 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box          |"
-	echo "| LED_BRIGHNTESS | 1 or 2 or 3            | Setting the brightness of the LEDs in front of the Fritz!Box            |"
+	echo "| LED_BRIGHTNESS | 1 or 2 or 3            | Setting the brightness of the LEDs in front of the Fritz!Box            |"
 	echo "| KEYLOCK        | 0 or 1                 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated)   |"
 	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
 	echo "| LAN            | STATE                  | Statistics for the LAN easily digestible by telegraf                    |"
