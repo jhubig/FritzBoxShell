@@ -145,6 +145,36 @@ LEDswitch(){
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### ------ FUNCTION LEDbrighness FOR SETTING THE BRIGHNTESS OF THE LEDS IN front of the Fritz!Box ------- ###
+### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+LEDbrightness(){
+	# Get the a valid SID
+	getSID
+
+	# led_display=0 -> ON
+	# led_display=1 -> DELAYED ON (20200106: not really slower that option 0 - NOT USED)
+	# led_display=2 -> OFF
+
+	# Check if device supports LED dimming
+	json=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=led" "http://$BoxIP/data.lua" | tr -d '"')
+	if grep -q 'canDim:1' <<< "$json"
+	then
+		wget -O - --post-data "sid=$SID&apply=&page=led&dimValue=$option2&led_display=0" "http://$BoxIP/data.lua" #&>/dev/null
+  	echo "Brightness set to $option2"
+	else
+    echo "Brightness setting on this FritzBox not possible."
+
+	fi
+
+	# Logout the "used" SID
+	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### --------- FUNCTION keyLockSwitch FOR ACTIVATING or DEACTIVATING the buttons on the Fritz!Box -------- ###
 ### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -628,43 +658,44 @@ DisplayArguments() {
 	echo ""
 	echo "Invalid Action and/or parameter. Possible combinations:"
 	echo ""
-	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
-	echo "|  Action      | Parameter              | Description                                                             |"
-	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
-	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| DEVICEINFO   | STATE                  | Show information about your Fritz!Box like ModelName, SN, etc.          |"
-	echo "| WLAN_2G      | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi             |"
-	echo "| WLAN_2G      | STATISTICS             | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf           |"
-	echo "| WLAN_2G      | QRCODE                 | Show a qr code to connect to the 2,4 Ghz WiFi                           |"
-	echo "| WLAN_5G      | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 5 Ghz WiFi               |"
-	echo "| WLAN_5G      | STATISTICS             | Statistics for the 5 Ghz WiFi easily digestible by telegraf             |"
-	echo "| WLAN_5G      | QRCODE                 | Show a qr code to connect to the 5 Ghz WiFi                             |"
-	echo "| WLAN_GUEST   | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the Guest WiFi               |"
-	echo "| WLAN_GUEST   | STATISTICS             | Statistics for the Guest WiFi easily digestible by telegraf             |"
-	echo "| WLAN_GUEST   | QRCODE                 | Show a qr code to connect to the Guest WiFi                             |"
-	echo "| WLAN         | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi    |"
-	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| TAM          | <index> and GetInfo    | e.g. TAM 0 GetInfo (gives info about answering machine)                 |"
-	echo "| TAM          | <index> and ON or OFF  | e.g. TAM 0 ON (switches ON the answering machine)                       |"
-	echo "| TAM          | <index> and GetMsgs    | e.g. TAM 0 GetMsgs (gives XML formatted list of messages)               |"
-	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| LED          | 0 or 1                 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box          |"
-	echo "| KEYLOCK      | 0 or 1                 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated)   |"
-	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| LAN          | STATE                  | Statistics for the LAN easily digestible by telegraf                    |"
-	echo "| DSL          | STATE                  | Statistics for the DSL easily digestible by telegraf                    |"
-	echo "| WAN          | STATE                  | Statistics for the WAN easily digestible by telegraf                    |"
-	echo "| LINK         | STATE                  | Statistics for the WAN DSL LINK easily digestible by telegraf           |"
-	echo "| IGDWAN       | STATE                  | Statistics for the WAN LINK easily digestible by telegraf               |"
-	echo "| IGDDSL       | STATE                  | Statistics for the DSL LINK easily digestible by telegraf               |"
-	echo "| IGDIP        | STATE                  | Statistics for the DSL IP easily digestible by telegraf                 |"
-	echo "| REPEATER     | 0                      | Switching OFF the WiFi of the Repeater                                  |"
-	echo "| REBOOT       | Box or Repeater        | Rebooting your Fritz!Box or Fritz!Repeater                              |"
-	echo "| UPNPMetaData | STATE or <filename>    | Full unformatted output of tr64desc.xml to console or file              |"
-	echo "| IGDMetaData  | STATE or <filename>    | Full unformatted output of igddesc.xml to console or file               |"
-	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| VERSION      |                        | Version of the fritzBoxShell.sh                                         |"
-	echo "|--------------|------------------------|-------------------------------------------------------------------------|"
+	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
+	echo "|  Action        | Parameter              | Description                                                             |"
+	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
+	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| DEVICEINFO     | STATE                  | Show information about your Fritz!Box like ModelName, SN, etc.          |"
+	echo "| WLAN_2G        | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi             |"
+	echo "| WLAN_2G        | STATISTICS             | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf           |"
+	echo "| WLAN_2G        | QRCODE                 | Show a qr code to connect to the 2,4 Ghz WiFi                           |"
+	echo "| WLAN_5G        | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 5 Ghz WiFi               |"
+	echo "| WLAN_5G        | STATISTICS             | Statistics for the 5 Ghz WiFi easily digestible by telegraf             |"
+	echo "| WLAN_5G        | QRCODE                 | Show a qr code to connect to the 5 Ghz WiFi                             |"
+	echo "| WLAN_GUEST     | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the Guest WiFi               |"
+	echo "| WLAN_GUEST     | STATISTICS             | Statistics for the Guest WiFi easily digestible by telegraf             |"
+	echo "| WLAN_GUEST     | QRCODE                 | Show a qr code to connect to the Guest WiFi                             |"
+	echo "| WLAN           | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi    |"
+	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| TAM            | <index> and GetInfo    | e.g. TAM 0 GetInfo (gives info about answering machine)                 |"
+	echo "| TAM            | <index> and ON or OFF  | e.g. TAM 0 ON (switches ON the answering machine)                       |"
+	echo "| TAM            | <index> and GetMsgs    | e.g. TAM 0 GetMsgs (gives XML formatted list of messages)               |"
+	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| LED            | 0 or 1                 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box          |"
+	echo "| LED_BRIGHNTESS | 1 or 2 or 3            | Setting the brightness of the LEDs in front of the Fritz!Box            |"
+	echo "| KEYLOCK        | 0 or 1                 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated)   |"
+	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| LAN            | STATE                  | Statistics for the LAN easily digestible by telegraf                    |"
+	echo "| DSL            | STATE                  | Statistics for the DSL easily digestible by telegraf                    |"
+	echo "| WAN            | STATE                  | Statistics for the WAN easily digestible by telegraf                    |"
+	echo "| LINK           | STATE                  | Statistics for the WAN DSL LINK easily digestible by telegraf           |"
+	echo "| IGDWAN         | STATE                  | Statistics for the WAN LINK easily digestible by telegraf               |"
+	echo "| IGDDSL         | STATE                  | Statistics for the DSL LINK easily digestible by telegraf               |"
+	echo "| IGDIP          | STATE                  | Statistics for the DSL IP easily digestible by telegraf                 |"
+	echo "| REPEATER       | 0                      | Switching OFF the WiFi of the Repeater                                  |"
+	echo "| REBOOT         | Box or Repeater        | Rebooting your Fritz!Box or Fritz!Repeater                              |"
+	echo "| UPNPMetaData   | STATE or <filename>    | Full unformatted output of tr64desc.xml to console or file              |"
+	echo "| IGDMetaData    | STATE or <filename>    | Full unformatted output of igddesc.xml to console or file               |"
+	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| VERSION        |                        | Version of the fritzBoxShell.sh                                         |"
+	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
 	echo ""
 }
 
@@ -684,7 +715,7 @@ else
 		if [ "$option2" = "1" ]; then WLANstate "ON";
 		elif [ "$option2" = "0" ]; then WLANstate "OFF";
 		elif [ "$option2" = "STATE" ]; then WLANstate "STATE";
-		elif [ "$option2" = "QRCODE" ]; then 
+		elif [ "$option2" = "QRCODE" ]; then
 			if ! command -v qrencode &> /dev/null; then
 				echo "Error: qrencode is request to show the qr code"
 				exit 1
@@ -734,6 +765,8 @@ else
 		Deviceinfo "$option2";
 	elif [ "$option1" = "LED" ]; then
 		LEDswitch "$option2";
+	elif [ "$option1" = "LED_BRIGHTNESS" ]; then
+		LEDbrightness "$option2";
 	elif [ "$option1" = "KEYLOCK" ]; then
 		keyLockSwitch "$option2";
 	elif [ "$option1" = "TAM" ]; then
