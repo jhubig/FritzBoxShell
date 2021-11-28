@@ -84,18 +84,25 @@ After the successful installation and setup following functions should be availa
 | Action | Parameter | Description |
 | --- | --- | --- |
 | WLAN_2G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi |
-| WLAN_2G  | STATISTICS      | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf        |
+| WLAN_2G  | STATISTICS | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf |
+| WLAN_2G | QRCODE | Show a qr code to connect to the 2,4 Ghz WiFi |
 | WLAN_5G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 5 Ghz WiFi |
-| WLAN_5G  | STATISTICS      | Statistics for the 5 Ghz WiFi easily digestible by telegraf          |
+| WLAN_5G  | STATISTICS | Statistics for the 5 Ghz WiFi easily digestible by telegraf |
+| WLAN_5G | QRCODE | Show a qr code to connect to the 5 Ghz WiFi |
+| WLAN_GUEST | 0 or 1 or STATE | Switching ON, OFF or checking the state of the Guest WiFi |
+| WLAN_GUEST | STATISTICS | Statistics for the Guest WiFi easily digestible by telegraf |
+| WLAN_GUEST | QRCODE | Show a qr code to connect to the Guest WiFi |
 | WLAN | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |
 | TAM | <index> and GetInfo | e.g. TAM 0 GetInfo (gives info about answering machine) |
 | TAM | <index> and ON or OFF | e.g. TAM 0 ON (switches ON the answering machine) |
 | TAM | <index> and GetMsgs | e.g. TAM 0 GetMsgs (gives XML formatted list of messages) |
 | LED | 0 or 1 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box |
+| LED_BRIGHNTESS | 1 or 2 or 3 | Setting the brightness of the LEDs in front of the Fritz!Box |
 | KEYLOCK | 0 or 1 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated) |
 | LAN | STATE | Statistics for the LAN easily digestible by telegraf |
 | DSL | STATE | Statistics for the DSL easily digestible by telegraf |
 | WAN | STATE | Statistics for the WAN easily digestible by telegraf |
+| WAN | RECONNECT | Ask for a new IP Address from your provider |
 | LINK | STATE | Statistics for the WAN DSL LINK easily digestible by telegraf |
 | IGDWAN | STATE | Statistics for the WAN LINK easily digestible by telegraf |
 | IGDDSL | STATE | Statistics for the DSL LINK easily digestible by telegraf |
