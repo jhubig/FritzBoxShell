@@ -370,6 +370,46 @@ WANstate() {
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### -------------------------------- FUNCTION WANreconnect - TR-064 Protocol -------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+WANreconnect() {
+
+    #Display IP Address before reconnect
+    location="/igdupnp/control/WANIPConn1"
+    uri="urn:schemas-upnp-org:service:WANIPConnection:1"
+    action='GetConnectionTypeInfo'
+
+    action='GetExternalIPAddress'
+
+    readout
+
+    location="/igdupnp/control/WANIPConn1"
+		uri="urn:schemas-upnp-org:service:WANIPConnection:1"
+		action='ForceTermination'
+
+    echo ""
+    echo "WAN RECONNECT initiated - Waiting for new IP... (30 seconds)"
+
+    curl -s "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?> <s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'> <s:Body> <u:$action xmlns:u='$uri' /> </s:Body> </s:Envelope>" &>/dev/null
+
+    sleep 30
+
+    echo ""
+    echo "FINISHED. Find new IP Address below:"
+
+    #Display IP Address after reconnect
+    location="/igdupnp/control/WANIPConn1"
+    uri="urn:schemas-upnp-org:service:WANIPConnection:1"
+    action='GetConnectionTypeInfo'
+
+    action='GetExternalIPAddress'
+
+    readout
+
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### ---------------------------- FUNCTION WANDSLLINKstate - TR-064 Protocol ----------------------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
 
@@ -685,6 +725,7 @@ DisplayArguments() {
 	echo "| LAN            | STATE                  | Statistics for the LAN easily digestible by telegraf                    |"
 	echo "| DSL            | STATE                  | Statistics for the DSL easily digestible by telegraf                    |"
 	echo "| WAN            | STATE                  | Statistics for the WAN easily digestible by telegraf                    |"
+	echo "| WAN            | RECONNECT              | Ask for a new IP Address from your provider                             |"
 	echo "| LINK           | STATE                  | Statistics for the WAN DSL LINK easily digestible by telegraf           |"
 	echo "| IGDWAN         | STATE                  | Statistics for the WAN LINK easily digestible by telegraf               |"
 	echo "| IGDDSL         | STATE                  | Statistics for the DSL LINK easily digestible by telegraf               |"
@@ -739,6 +780,7 @@ else
 		fi
 	elif [ "$option1" = "WAN" ]; then
 		if [ "$option2" = "STATE" ]; then WANstate "$option2";
+  elif [ "$option2" = "RECONNECT" ]; then WANreconnect "$option2";
 		else DisplayArguments
 		fi
 	elif [ "$option1" = "LINK" ]; then
