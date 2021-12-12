@@ -146,7 +146,7 @@ LEDswitch(){
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
-### ------ FUNCTION LEDbrighness FOR SETTING THE BRIGHNTESS OF THE LEDS IN front of the Fritz!Box ------- ###
+### ------ FUNCTION LEDbrightness FOR SETTING THE BRIGHTNESS OF THE LEDS IN front of the Fritz!Box ------ ###
 ### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
 ### ----------------------------------------------------------------------------------------------------- ###
 ### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
