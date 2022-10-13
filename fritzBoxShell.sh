@@ -841,3 +841,5 @@ else
 	else DisplayArguments
 	fi
 fi
+
+# vim: tabstop=2 smartindent shiftwidth=2 expandtab!
