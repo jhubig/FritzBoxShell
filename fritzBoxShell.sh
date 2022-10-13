@@ -799,6 +799,21 @@ DisplayArguments() {
 	echo "| VERSION        |                        | Version of the fritzBoxShell.sh                                         |"
 	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
 	echo ""
+  cat <<END
+Supported command line options and their related environment value:
+  --boxip <IP address>      <-> BoxIP="<IP address>"
+  --boxuser <user>          <-> BoxUSER="<user>"
+  --boxpw <password>        <-> BoxPW="<password>"
+  --repeaterip <IP address> <-> RepeaterIP="<IP address>"
+  --repeateruser <user>     <-> RepeaterUSER="<user>"
+  --repeaterpw <password>   <-> RepeaterPW="<password>"
+
+Supported optional output format/filter:
+  -O|outputformat influx|graphite
+  -F|outputfilter <regular expression>
+END
+
+  exit 1
 }
 
 # Check if an argument was supplied for shell script
