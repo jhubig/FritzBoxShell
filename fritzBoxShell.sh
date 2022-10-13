@@ -113,6 +113,7 @@ if [ -n "$OutputFormat" ]; then
       ;;
     *)
       # unsupported OutputFormat
+      echo "$(basename "$0"): error occured, '-O|--outputformat ...' active, but format not supported: $OutputFormat" >&2
       exit 1
       ;;
   esac
