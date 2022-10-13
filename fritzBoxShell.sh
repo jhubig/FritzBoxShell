@@ -84,6 +84,7 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 # handle output format as wrapper to self
 if [ -n "$OutputFormat" ]; then
   # call self again with arguments
+  export BoxIP BoxUSER BoxPW RepeaterIP RepeaterUSER RepeaterPW
   output=$($0 $*)
   rc=$?
 
