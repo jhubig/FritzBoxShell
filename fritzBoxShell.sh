@@ -590,6 +590,23 @@ TAM() {
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### -------------------------------- FUNCTION OnTel - TR-064 Protocol ----------------------------------- ###
+### ---------------------- Function to get the call list for a given number of days --------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+OnTel() {
+		location="/upnp/control/x_contact"
+		uri="urn:dslforum-org:service:X_AVM-DE_OnTel:1"
+
+		if [ "$option2" = "GetCallList" ]; then
+			action='GetCallList'
+			listurl=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' | sed -En "s/<(.*)>(.*)/\1 \2/p" | awk '{print $2}')
+			curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "$listurl&days=$option3"
+		fi
+
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### ------------------------------ FUNCTION WLANstate - TR-064 Protocol --------------------------------- ###
 ### ----- Function to switch ON or OFF 2.4 and/or 5 Ghz WiFi and also getting the state of the WiFi ----- ###
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -734,6 +751,8 @@ DisplayArguments() {
 	echo "| TAM            | <index> and ON or OFF  | e.g. TAM 0 ON (switches ON the answering machine)                       |"
 	echo "| TAM            | <index> and GetMsgs    | e.g. TAM 0 GetMsgs (gives XML formatted list of messages)               |"
 	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| OnTel          | GetCallList and <days> | e.g. OnTel GetCallList 7 for all calls of the last seven days           |"
+	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
 	echo "| LED            | 0 or 1                 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box          |"
 	echo "| LED_BRIGHTNESS | 1 or 2 or 3            | Setting the brightness of the LEDs in front of the Fritz!Box            |"
 	echo "| KEYLOCK        | 0 or 1                 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated)   |"
@@ -829,6 +848,10 @@ else
 		keyLockSwitch "$option2";
 	elif [ "$option1" = "TAM" ]; then
 		if [[ $option2 =~ ^[+-]?[0-9]+$ ]] && { [ "$option3" = "GetInfo" ] || [ "$option3" = "ON" ] || [ "$option3" = "OFF" ] || [ "$option3" = "GetMsgs" ];}; then TAM
+		else DisplayArguments
+		fi
+	elif [ "$option1" = "OnTel" ]; then
+		if [ "$option2" = "GetCallList" ]; then OnTel
 		else DisplayArguments
 		fi
 	elif [ "$option1" = "REPEATER" ]; then
