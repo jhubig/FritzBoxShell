@@ -64,6 +64,14 @@ while [[ $# -gt 0 ]]; do
     RepeaterPW="$2"
     shift ; shift
     ;;
+    -O|--outputformat)
+    OutputFormat="$2"
+    shift ; shift
+    ;;
+    -F|--outputfilter)
+    OutputFilter="$2"
+    shift ; shift
+    ;;
 		*)    # unknown option
     POSITIONAL+=("$1") # save it in an array for later
     shift # past argument
@@ -72,6 +80,45 @@ while [[ $# -gt 0 ]]; do
 done
 
 set -- "${POSITIONAL[@]}" # restore positional parameters
+
+# handle output format as wrapper to self
+if [ -n "$OutputFormat" ]; then
+  # call self again with arguments
+  export BoxIP BoxUSER BoxPW RepeaterIP RepeaterUSER RepeaterPW
+  output=$($0 $*)
+  rc=$?
+
+  if [ $rc -ne 0 ]; then
+    echo "$(basename "$0"): error occured, output suppressed because option '-O|--outputformat ...' is provided" >&2
+    exit $rc
+  fi
+
+  if [ -n "$OutputFilter" ]; then
+    # apply output filter
+    output=$(echo "$output" | egrep $OutputFilter)
+  fi
+
+  # quote non-numbered values (skip empty lines)
+  output=$(echo "$output" | awk 'length($0) > 0 { if ($2 ~ "^[0-9]+$") print $1 " " $2; else print $1 " \"" $2 "\""; }')
+
+  case $OutputFormat in
+    influx)
+      # convert to influx input data string with prefix 'fritz'
+      echo "$output" | tr '\n' ',' | tr ' ' '=' | sed "s/,$//" | echo "fritz $(cat -)"
+      exit $rc
+      ;;
+    graphite)
+      # convert to . separated key=value (skip empty lines)
+      echo "$output" | awk 'length($0) > 0 { print "fritz." $1 "=" $2 }'
+      exit $rc
+      ;;
+    *)
+      # unsupported OutputFormat
+      echo "$(basename "$0"): error occured, '-O|--outputformat ...' active, but format not supported: $OutputFormat" >&2
+      exit 1
+      ;;
+  esac
+fi
 
 # Storing shell parameters in variables
 # Example:
@@ -773,6 +820,21 @@ DisplayArguments() {
 	echo "| VERSION        |                        | Version of the fritzBoxShell.sh                                         |"
 	echo "|----------------|------------------------|-------------------------------------------------------------------------|"
 	echo ""
+  cat <<END
+Supported command line options and their related environment value:
+  --boxip <IP address>      <-> BoxIP="<IP address>"
+  --boxuser <user>          <-> BoxUSER="<user>"
+  --boxpw <password>        <-> BoxPW="<password>"
+  --repeaterip <IP address> <-> RepeaterIP="<IP address>"
+  --repeateruser <user>     <-> RepeaterUSER="<user>"
+  --repeaterpw <password>   <-> RepeaterPW="<password>"
+
+Supported optional output format/filter:
+  -O|outputformat influx|graphite
+  -F|outputfilter <regular expression>
+END
+
+  exit 1
 }
 
 # Check if an argument was supplied for shell script
@@ -864,3 +926,5 @@ else
 	else DisplayArguments
 	fi
 fi
+
+# vim: tabstop=2 smartindent shiftwidth=2 expandtab!
