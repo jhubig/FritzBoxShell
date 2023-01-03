@@ -112,6 +112,11 @@ if [ -n "$OutputFormat" ]; then
       echo "$output" | awk 'length($0) > 0 { print "fritz." $1 "=" $2 }'
       exit $rc
       ;;
+    mrtg)
+      # convert to 2-line separated bytes received/sent value
+      echo "$output" | awk '$1 ~ /Bytes(Received|Sent)$/ { print $2 }'
+      exit $rc
+      ;;
     *)
       # unsupported OutputFormat
       echo "$(basename "$0"): error occured, '-O|--outputformat ...' active, but format not supported: $OutputFormat" >&2
@@ -830,8 +835,8 @@ Supported command line options and their related environment value:
   --repeaterpw <password>   <-> RepeaterPW="<password>"
 
 Supported optional output format/filter:
-  -O|outputformat influx|graphite
-  -F|outputfilter <regular expression>
+  -O|--outputformat influx|graphite|mrtg
+  -F|--outputfilter <regular expression>
 END
 
   exit 1
