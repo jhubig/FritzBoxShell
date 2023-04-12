@@ -130,5 +130,5 @@ Here you can find more information on TR-064 protocol and the available actions 
 AVM, FRITZ!, Fritz!Box and the FRITZ! logo are registered trademarks of AVM GmbH - https://avm.de/
 
 ## donate
-<a href="https://paypal.me/jhubig/"><img src="blue.svg" height="30"></a>  
+<a href="https://paypal.me/jhubig/"><img src="https://github.com/andreostrovsky/donate-with-paypal/blob/master/blue.svg" height="30"></a>  
 If you like this project — or just feeling generous, consider buying me a beer. Cheers! :beers:
