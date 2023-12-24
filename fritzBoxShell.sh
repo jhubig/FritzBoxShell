@@ -289,6 +289,42 @@ SignalStrengthChange(){
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------- FUNCTION WIREGUARD VPN connection change ------------------------------- ###
+### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+WireguardVPNstate(){
+	# Get the a valid SID
+	getSID
+
+	connectionName="$option2"
+
+	if [ "$option3" != "0" ] && [ "$option3" != "1" ]; then echo "Add 0 for switching OFF or 1 for switching ON."
+	else
+		connectionState=$option3
+		if [ "$connectionState" = "1" ]; then connectionStateString="on";
+		elif [ "$connectionState" = "0" ]; then connectionStateString="off";
+		fi
+		# Get the connection ID
+		connectionID=$(wget -O - --post-data "xhr=1&sid=$SID&page=shareWireguard&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null | jq '.data.init.boxConnections | to_entries[] | select( .value.name == "'"$connectionName"'" ) | .key' | tr -d '"')
+		
+		# Switch on/off the connection if the connection was found
+		if [ "$connectionID" != "" ]; then
+			wget -O - --post-data "xhr=1&sid=$SID&page=shareWireguard&$connectionID=$connectionStateString&active_$connectionID=$connectionState&apply=" "http://$BoxIP/data.lua" &>/dev/null
+			echo "$connectionName ($connectionID) successfuly switched $connectionStateString."
+		elif [ "$connectionID" == "" ]; then
+			echo "$connectionName not found."
+		fi
+
+	fi
+
+	# Logout the "used" SID
+	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### -------------------------------- FUNCTION readout - TR-064 Protocol --------------------------------- ###
 ### -- General function for sending the SOAP request via TR-064 Protocol - called from other functions -- ###
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -864,6 +900,7 @@ DisplayArguments() {
 	echo "| LED_BRIGHTNESS  | 1 or 2 or 3            | Setting the brightness of the LEDs in front of the Fritz!Box            |"
 	echo "| KEYLOCK         | 0 or 1                 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated)   |"
 	echo "| SIGNAL_STRENGTH | 100,50,25,12 or 6 %    | Set your signal strength (channel settings will then be set to manual)  |"
+	echo "| WIREGUARD_VPN   | <name> and 0 or 1      | Name of your connection in "" (e.g. "Test 1"). 0 (OFF) and 1 (ON)       |"
 	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
 	echo "| LAN             | STATE                  | Statistics for the LAN easily digestible by telegraf                    |"
 	echo "| DSL             | STATE                  | Statistics for the DSL easily digestible by telegraf                    |"
@@ -972,6 +1009,10 @@ else
 		keyLockSwitch "$option2";
 	elif [ "$option1" = "SIGNAL_STRENGTH" ]; then
 		SignalStrengthChange "$option2";
+	elif [ "$option1" = "WIREGUARD_VPN" ]; then
+		if [ "$option2" = "" ]; then echo "Please enter VPN Wireguard conmnection"
+		else WireguardVPNstate "$option2" "$option3";
+		fi
 	elif [ "$option1" = "TAM" ]; then
 		if [[ $option2 =~ ^[+-]?[0-9]+$ ]] && { [ "$option3" = "GetInfo" ] || [ "$option3" = "ON" ] || [ "$option3" = "OFF" ] || [ "$option3" = "GetMsgs" ];}; then TAM
 		else DisplayArguments

@@ -105,6 +105,7 @@ After the successful installation and setup following functions should be availa
 | LED_BRIGHTNESS | 1 or 2 or 3 | Setting the brightness of the LEDs in front of the Fritz!Box |
 | KEYLOCK | 0 or 1 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated) |
 | SIGNAL_STRENGTH | 100,50,25,12 or 6 % | Set your signal strength (channel settings will then be set to manual) |
+| WIREGUARD_VPN | <name> and 0 or 1 | Name of your connection in "" (e.g. "Test 1"). 0 (OFF) and 1 (ON) |
 | LAN | STATE | Statistics for the LAN easily digestible by telegraf |
 | DSL | STATE | Statistics for the DSL easily digestible by telegraf |
 | WAN | STATE | Statistics for the WAN easily digestible by telegraf |
