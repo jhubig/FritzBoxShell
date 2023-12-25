@@ -770,8 +770,15 @@ WLANstate() {
 
 		action='SetChannel'
 		if [ "$option2" = "CHANGECH" ]; then
-			rand=("1" "2" "3" "4" "5" "6" "7" "8" "9" "10" "11" "12" "13") 
-			NEW_CH=$( shuf -e ${rand[@]} -n1 )
+			channels=("1" "2" "3" "4" "5" "6" "7" "8" "9" "10" "11" "12" "13")
+			case " ${channels[*]} " in
+				*" $option3 "*) 
+					NEW_CH="$option3"
+    				;;
+				*)
+					NEW_CH=$( shuf -e ${channels[@]} -n1 )
+    				;;
+			esac
 			echo "2.4Ghz: Change channel"; curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewChannel>$NEW_CH</NewChannel></u:$action></s:Body></s:Envelope>" -s > /dev/null;
 			echo "2.4Ghz: Channel changed to $NEW_CH"
 		fi
@@ -803,8 +810,15 @@ WLANstate() {
 
 		action='SetChannel'
 		if [ "$option2" = "CHANGECH" ]; then
-			rand=("36" "40" "44" "48" "52" "56" "60" "64" "100" "104" "108" "112" "116" "120" "124" "128") 
-			NEW_CH=$( shuf -e ${rand[@]} -n1 )
+			channels=("36" "40" "44" "48" "52" "56" "60" "64" "100" "104" "108" "112" "116" "120" "124" "128") 
+			case " ${channels[*]} " in
+				*" $option3 "*) 
+					NEW_CH="$option3"
+    				;;
+				*)
+					NEW_CH=$( shuf -e ${channels[@]} -n1 )
+    				;;
+			esac
 			echo "5Ghz: Changing channel"; curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewChannel>$NEW_CH</NewChannel></u:$action></s:Body></s:Envelope>" -s > /dev/null;
 			echo "5Ghz: Channel changed to $NEW_CH"
 		fi
@@ -894,56 +908,56 @@ DisplayArguments() {
 	echo ""
 	echo "Invalid Action and/or parameter. Possible combinations:"
 	echo ""
-	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
-	echo "|  Action         | Parameter              | Description                                                             |"
-	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
-	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| DEVICEINFO      | STATE                  | Show information about your Fritz!Box like ModelName, SN, etc.          |"
-	echo "| WLAN_2G         | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi             |"
-	echo "| WLAN_2G         | STATISTICS             | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf           |"
-	echo "| WLAN_2G         | QRCODE                 | Show a qr code to connect to the 2,4 Ghz WiFi                           |"
-	echo "| WLAN_2G         | CHANGECH               | Change channel of the 2,4 Ghz WiFi                                      |"
-	echo "| WLAN_5G         | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 5 Ghz WiFi               |"
-	echo "| WLAN_5G         | STATISTICS             | Statistics for the 5 Ghz WiFi easily digestible by telegraf             |"
-	echo "| WLAN_5G         | QRCODE                 | Show a qr code to connect to the 5 Ghz WiFi                             |"
-	echo "| WLAN_5G         | CHANGECH               | Change channel of the 5 Ghz WiFi                                        |"
-	echo "| WLAN_GUEST      | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the Guest WiFi               |"
-	echo "| WLAN_GUEST      | STATISTICS             | Statistics for the Guest WiFi easily digestible by telegraf             |"
-	echo "| WLAN_GUEST      | QRCODE                 | Show a qr code to connect to the Guest WiFi                             |"
-	echo "| WLAN            | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi    |"
-	echo "| WLAN            | QRCODE                 | Show a qr code to connect to the 2,4 and 5 Ghz WiFi                     |"
-	echo "| WLAN            | CHANGECH               | Change channel of the 2,4 and 5 Ghz WiFi                                |"
-	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| TAM             | <index> and GetInfo    | e.g. TAM 0 GetInfo (gives info about answering machine)                 |"
-	echo "| TAM             | <index> and ON or OFF  | e.g. TAM 0 ON (switches ON the answering machine)                       |"
-	echo "| TAM             | <index> and GetMsgs    | e.g. TAM 0 GetMsgs (gives XML formatted list of messages)               |"
-	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| OnTel           | GetCallList and <days> | e.g. OnTel GetCallList 7 for all calls of the last seven days           |"
-	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| LED             | 0 or 1                 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box          |"
-	echo "| LED_BRIGHTNESS  | 1 or 2 or 3            | Setting the brightness of the LEDs in front of the Fritz!Box            |"
-	echo "| KEYLOCK         | 0 or 1                 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated)   |"
-	echo "| SIGNAL_STRENGTH | 100,50,25,12 or 6 %    | Set your signal strength (channel settings will then be set to manual)  |"
-	echo "| WIREGUARD_VPN   | <name> and 0 or 1      | Name of your connection in "" (e.g. "Test 1"). 0 (OFF) and 1 (ON)       |"
-	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| MISC_LUA        | totalConnectsionWLAN   | Number of total connected WLAN clients (incl. full Mesh)                |"
-	echo "|                 | totalConnectsionLAN    | Number of total connected LAN clients (incl. full Mesh)                 |"
-	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| LAN             | STATE                  | Statistics for the LAN easily digestible by telegraf                    |"
-	echo "| DSL             | STATE                  | Statistics for the DSL easily digestible by telegraf                    |"
-	echo "| WAN             | STATE                  | Statistics for the WAN easily digestible by telegraf                    |"
-	echo "| WAN             | RECONNECT              | Ask for a new IP Address from your provider                             |"
-	echo "| LINK            | STATE                  | Statistics for the WAN DSL LINK easily digestible by telegraf           |"
-	echo "| IGDWAN          | STATE                  | Statistics for the WAN LINK easily digestible by telegraf               |"
-	echo "| IGDDSL          | STATE                  | Statistics for the DSL LINK easily digestible by telegraf               |"
-	echo "| IGDIP           | STATE                  | Statistics for the DSL IP easily digestible by telegraf                 |"
-	echo "| REPEATER        | 0                      | Switching OFF the WiFi of the Repeater                                  |"
-	echo "| REBOOT          | Box or Repeater        | Rebooting your Fritz!Box or Fritz!Repeater                              |"
-	echo "| UPNPMetaData    | STATE or <filename>    | Full unformatted output of tr64desc.xml to console or file              |"
-	echo "| IGDMetaData     | STATE or <filename>    | Full unformatted output of igddesc.xml to console or file               |"
-	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
-	echo "| VERSION         |                        | Version of the fritzBoxShell.sh                                         |"
-	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
+	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
+	echo "|  Action         | Parameter              | Description                                                                 |"
+	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
+	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
+	echo "| DEVICEINFO      | STATE                  | Show information about your Fritz!Box like ModelName, SN, etc.              |"
+	echo "| WLAN_2G         | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi                 |"
+	echo "| WLAN_2G         | STATISTICS             | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf               |"
+	echo "| WLAN_2G         | QRCODE                 | Show a qr code to connect to the 2,4 Ghz WiFi                               |"
+	echo "| WLAN_2G         | CHANGECH and <channel> | Change channel of the 2,4 Ghz WiFi to optional <channel> (random if absent) |"
+	echo "| WLAN_5G         | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 5 Ghz WiFi                   |"
+	echo "| WLAN_5G         | STATISTICS             | Statistics for the 5 Ghz WiFi easily digestible by telegraf                 |"
+	echo "| WLAN_5G         | QRCODE                 | Show a qr code to connect to the 5 Ghz WiFi                                 |"
+	echo "| WLAN_5G         | CHANGECH and <channel> | Change channel of the 5 Ghz WiFi to optional <channel> (random if absent)   |"
+	echo "| WLAN_GUEST      | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the Guest WiFi                   |"
+	echo "| WLAN_GUEST      | STATISTICS             | Statistics for the Guest WiFi easily digestible by telegraf                 |"
+	echo "| WLAN_GUEST      | QRCODE                 | Show a qr code to connect to the Guest WiFi                                 |"
+	echo "| WLAN            | 0 or 1 or STATE        | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi        |"
+	echo "| WLAN            | QRCODE                 | Show a qr code to connect to the 2,4 and 5 Ghz WiFi                         |"
+	echo "| WLAN            | CHANGECH and <channel> | Change channel of the 2,4 and 5 Ghz WiFi to optional <channel>              |"
+	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
+	echo "| TAM             | <index> and GetInfo    | e.g. TAM 0 GetInfo (gives info about answering machine)                     |"
+	echo "| TAM             | <index> and ON or OFF  | e.g. TAM 0 ON (switches ON the answering machine)                           |"
+	echo "| TAM             | <index> and GetMsgs    | e.g. TAM 0 GetMsgs (gives XML formatted list of messages)                   |"
+	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
+	echo "| OnTel           | GetCallList and <days> | e.g. OnTel GetCallList 7 for all calls of the last seven days               |"
+	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
+	echo "| LED             | 0 or 1                 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box              |"
+	echo "| LED_BRIGHTNESS  | 1 or 2 or 3            | Setting the brightness of the LEDs in front of the Fritz!Box                |"
+	echo "| KEYLOCK         | 0 or 1                 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated)       |"
+	echo "| SIGNAL_STRENGTH | 100,50,25,12 or 6 %    | Set your signal strength (channel settings will then be set to manual)      |"
+	echo "| WIREGUARD_VPN   | <name> and 0 or 1      | Name of your connection in "" (e.g. "Test 1"). 0 (OFF) and 1 (ON)           |"
+	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
+	echo "| MISC_LUA        | totalConnectsionWLAN   | Number of total connected WLAN clients (incl. full Mesh)                    |"
+	echo "|                 | totalConnectsionLAN    | Number of total connected LAN clients (incl. full Mesh)                     |"
+	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
+  echo "| LAN             | STATE                  | Statistics for the LAN easily digestible by telegraf                        |"
+	echo "| DSL             | STATE                  | Statistics for the DSL easily digestible by telegraf                        |"
+	echo "| WAN             | STATE                  | Statistics for the WAN easily digestible by telegraf                        |"
+	echo "| WAN             | RECONNECT              | Ask for a new IP Address from your provider                                 |"
+	echo "| LINK            | STATE                  | Statistics for the WAN DSL LINK easily digestible by telegraf               |"
+	echo "| IGDWAN          | STATE                  | Statistics for the WAN LINK easily digestible by telegraf                   |"
+	echo "| IGDDSL          | STATE                  | Statistics for the DSL LINK easily digestible by telegraf                   |"
+	echo "| IGDIP           | STATE                  | Statistics for the DSL IP easily digestible by telegraf                     |"
+	echo "| REPEATER        | 0                      | Switching OFF the WiFi of the Repeater                                      |"
+	echo "| REBOOT          | Box or Repeater        | Rebooting your Fritz!Box or Fritz!Repeater                                  |"
+	echo "| UPNPMetaData    | STATE or <filename>    | Full unformatted output of tr64desc.xml to console or file                  |"
+	echo "| IGDMetaData     | STATE or <filename>    | Full unformatted output of igddesc.xml to console or file                   |"
+	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
+	echo "| VERSION         |                        | Version of the fritzBoxShell.sh                                             |"
+	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
 	echo ""
   cat <<END
 Supported command line options and their related environment value:

@@ -87,20 +87,20 @@ After the successful installation and setup following functions should be availa
 | WLAN_2G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi |
 | WLAN_2G  | STATISTICS | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf |
 | WLAN_2G | QRCODE | Show a qr code to connect to the 2,4 Ghz WiFi |
-| WLAN_2G | CHANGECH | Change channel of the 2,4 Ghz WiFi |
+| WLAN_2G | CHANGECH and \<channel> | Change channel of the 2,4 Ghz WiFi to optional \<channel> (random if absent) |
 | WLAN_5G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 5 Ghz WiFi |
 | WLAN_5G  | STATISTICS | Statistics for the 5 Ghz WiFi easily digestible by telegraf |
 | WLAN_5G | QRCODE | Show a qr code to connect to the 5 Ghz WiFi |
-| WLAN_5G | CHANGECH | Change channel of the 5 Ghz WiFi |
+| WLAN_5G | CHANGECH and \<channel> | Change channel of the 5 Ghz WiFi to optional \<channel> (random if absent) |
 | WLAN_GUEST | 0 or 1 or STATE | Switching ON, OFF or checking the state of the Guest WiFi |
 | WLAN_GUEST | STATISTICS | Statistics for the Guest WiFi easily digestible by telegraf |
 | WLAN_GUEST | QRCODE | Show a qr code to connect to the Guest WiFi |
 | WLAN | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |
 | WLAN | QRCODE | Show a qr code to connect to the 2,4 and 5 Ghz and Guest WiFi |
-| WLAN | CHANGECH | Change channel of the 2,4 and 5 Ghz WiFi |
-| TAM | <index> and GetInfo | e.g. TAM 0 GetInfo (gives info about answering machine) |
-| TAM | <index> and ON or OFF | e.g. TAM 0 ON (switches ON the answering machine) |
-| TAM | <index> and GetMsgs | e.g. TAM 0 GetMsgs (gives XML formatted list of messages) |
+| WLAN | CHANGECH and \<channel> | Change channel of the 2,4 and 5 Ghz WiFi to optional \<channel> |
+| TAM | \<index> and GetInfo | e.g. TAM 0 GetInfo (gives info about answering machine) |
+| TAM | \<index> and ON or OFF | e.g. TAM 0 ON (switches ON the answering machine) |
+| TAM | \<index> and GetMsgs | e.g. TAM 0 GetMsgs (gives XML formatted list of messages) |
 | LED | 0 or 1 | Switching ON (1) or OFF (0) the LEDs in front of the Fritz!Box |
 | LED_BRIGHTNESS | 1 or 2 or 3 | Setting the brightness of the LEDs in front of the Fritz!Box |
 | KEYLOCK | 0 or 1 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated) |
@@ -117,9 +117,9 @@ After the successful installation and setup following functions should be availa
 | IGDIP | STATE | Statistics for the DSL IP easily digestible by telegraf |
 | REPEATER | 0 | Switching OFF the WiFi of the Repeater |
 | REBOOT | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater |
-| UPNPMetaData | STATE or <filename> | Full unformatted output of tr64desc.xml to console or file |
-| IGDMetaData | STATE or <filename> | Full unformatted output of igddesc.xml to console or file |
-| VERSION | <N/A> | Version of the fritzBoxShell.sh |
+| UPNPMetaData | STATE or \<filename> | Full unformatted output of tr64desc.xml to console or file |
+| IGDMetaData | STATE or \<filename> | Full unformatted output of igddesc.xml to console or file |
+| VERSION | \<N/A> | Version of the fritzBoxShell.sh |
 
 ### Notes:
 
