@@ -289,6 +289,66 @@ SignalStrengthChange(){
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------- FUNCTION WIREGUARD VPN connection change ------------------------------- ###
+### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+WireguardVPNstate(){
+	# Get the a valid SID
+	getSID
+
+	connectionName="$option2"
+
+	if [ "$option3" != "0" ] && [ "$option3" != "1" ]; then echo "Add 0 for switching OFF or 1 for switching ON."
+	else
+		connectionState=$option3
+		if [ "$connectionState" = "1" ]; then connectionStateString="on";
+		elif [ "$connectionState" = "0" ]; then connectionStateString="off";
+		fi
+		# Get the connection ID
+		connectionID=$(wget -O - --post-data "xhr=1&sid=$SID&page=shareWireguard&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null | jq '.data.init.boxConnections | to_entries[] | select( .value.name == "'"$connectionName"'" ) | .key' | tr -d '"')
+		
+		# Switch on/off the connection if the connection was found
+		if [ "$connectionID" != "" ]; then
+			wget -O - --post-data "xhr=1&sid=$SID&page=shareWireguard&$connectionID=$connectionStateString&active_$connectionID=$connectionState&apply=" "http://$BoxIP/data.lua" &>/dev/null
+			echo "$connectionName ($connectionID) successfuly switched $connectionStateString."
+		elif [ "$connectionID" == "" ]; then
+			echo "$connectionName not found."
+		fi
+
+	fi
+
+	# Logout the "used" SID
+	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------------ FUNCTION to readout misc from data.lua ------------------------------- ###
+### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+LUAmisc(){
+	# Get the a valid SID
+	getSID
+
+	# This could be extended in the future to also get other information
+	if [ "$option2" == "totalConnectionsWLAN" ]; then
+		totalConnectionsWLAN=$(wget -O - --post-data "xhr=1&sid=$SID&page=overview&xhrId=first&noMenuRef=1" "http://$BoxIP/data.lua" 2>/dev/null | jq '.data.net.devices.[] | select(.type=="wlan" ) | length' | wc -l)
+		echo $totalConnectionsWLAN
+	elif [ "$option2" == "totalConnectionsLAN" ]; then
+		totalConnectionsLAN=$(wget -O - --post-data "xhr=1&sid=$SID&page=overview&xhrId=first&noMenuRef=1" "http://$BoxIP/data.lua" 2>/dev/null | jq '.data.net.devices.[] | select(.type=="lan" ) | length' | wc -l)
+		echo $totalConnectionsLAN
+	fi
+
+	# Logout the "used" SID
+	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### -------------------------------- FUNCTION readout - TR-064 Protocol --------------------------------- ###
 ### -- General function for sending the SOAP request via TR-064 Protocol - called from other functions -- ###
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -878,8 +938,12 @@ DisplayArguments() {
 	echo "| LED_BRIGHTNESS  | 1 or 2 or 3            | Setting the brightness of the LEDs in front of the Fritz!Box                |"
 	echo "| KEYLOCK         | 0 or 1                 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated)       |"
 	echo "| SIGNAL_STRENGTH | 100,50,25,12 or 6 %    | Set your signal strength (channel settings will then be set to manual)      |"
+	echo "| WIREGUARD_VPN   | <name> and 0 or 1      | Name of your connection in "" (e.g. "Test 1"). 0 (OFF) and 1 (ON)           |"
 	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
-	echo "| LAN             | STATE                  | Statistics for the LAN easily digestible by telegraf                        |"
+	echo "| MISC_LUA        | totalConnectsionWLAN   | Number of total connected WLAN clients (incl. full Mesh)                    |"
+	echo "|                 | totalConnectsionLAN    | Number of total connected LAN clients (incl. full Mesh)                     |"
+	echo "|-----------------|------------------------|-----------------------------------------------------------------------------|"
+  echo "| LAN             | STATE                  | Statistics for the LAN easily digestible by telegraf                        |"
 	echo "| DSL             | STATE                  | Statistics for the DSL easily digestible by telegraf                        |"
 	echo "| WAN             | STATE                  | Statistics for the WAN easily digestible by telegraf                        |"
 	echo "| WAN             | RECONNECT              | Ask for a new IP Address from your provider                                 |"
@@ -986,6 +1050,12 @@ else
 		keyLockSwitch "$option2";
 	elif [ "$option1" = "SIGNAL_STRENGTH" ]; then
 		SignalStrengthChange "$option2";
+	elif [ "$option1" = "WIREGUARD_VPN" ]; then
+		if [ "$option2" = "" ]; then echo "Please enter VPN Wireguard conmnection"
+		else WireguardVPNstate "$option2" "$option3";
+		fi
+	elif [ "$option1" = "MISC_LUA" ]; then
+		LUAmisc "$option2";
 	elif [ "$option1" = "TAM" ]; then
 		if [[ $option2 =~ ^[+-]?[0-9]+$ ]] && { [ "$option3" = "GetInfo" ] || [ "$option3" = "ON" ] || [ "$option3" = "OFF" ] || [ "$option3" = "GetMsgs" ];}; then TAM
 		else DisplayArguments
