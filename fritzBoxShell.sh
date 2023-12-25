@@ -325,6 +325,30 @@ WireguardVPNstate(){
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------------ FUNCTION to readout misc from data.lua ------------------------------- ###
+### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+LUAmisc(){
+	# Get the a valid SID
+	getSID
+
+	# This could be extended in the future to also get other information
+	if [ "$option2" == "totalConnectionsWLAN" ]; then
+		totalConnectionsWLAN=$(wget -O - --post-data "xhr=1&sid=$SID&page=overview&xhrId=first&noMenuRef=1" "http://$BoxIP/data.lua" 2>/dev/null | jq '.data.net.devices.[] | select(.type=="wlan" ) | length' | wc -l)
+		echo $totalConnectionsWLAN
+	elif [ "$option2" == "totalConnectionsLAN" ]; then
+		totalConnectionsLAN=$(wget -O - --post-data "xhr=1&sid=$SID&page=overview&xhrId=first&noMenuRef=1" "http://$BoxIP/data.lua" 2>/dev/null | jq '.data.net.devices.[] | select(.type=="lan" ) | length' | wc -l)
+		echo $totalConnectionsLAN
+	fi
+
+	# Logout the "used" SID
+	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### -------------------------------- FUNCTION readout - TR-064 Protocol --------------------------------- ###
 ### -- General function for sending the SOAP request via TR-064 Protocol - called from other functions -- ###
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -902,6 +926,9 @@ DisplayArguments() {
 	echo "| SIGNAL_STRENGTH | 100,50,25,12 or 6 %    | Set your signal strength (channel settings will then be set to manual)  |"
 	echo "| WIREGUARD_VPN   | <name> and 0 or 1      | Name of your connection in "" (e.g. "Test 1"). 0 (OFF) and 1 (ON)       |"
 	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
+	echo "| MISC_LUA        | totalConnectsionWLAN   | Number of total connected WLAN clients (incl. full Mesh)                |"
+	echo "|                 | totalConnectsionLAN    | Number of total connected LAN clients (incl. full Mesh)                 |"
+	echo "|-----------------|------------------------|-------------------------------------------------------------------------|"
 	echo "| LAN             | STATE                  | Statistics for the LAN easily digestible by telegraf                    |"
 	echo "| DSL             | STATE                  | Statistics for the DSL easily digestible by telegraf                    |"
 	echo "| WAN             | STATE                  | Statistics for the WAN easily digestible by telegraf                    |"
@@ -1013,6 +1040,8 @@ else
 		if [ "$option2" = "" ]; then echo "Please enter VPN Wireguard conmnection"
 		else WireguardVPNstate "$option2" "$option3";
 		fi
+	elif [ "$option1" = "MISC_LUA" ]; then
+		LUAmisc "$option2";
 	elif [ "$option1" = "TAM" ]; then
 		if [[ $option2 =~ ^[+-]?[0-9]+$ ]] && { [ "$option3" = "GetInfo" ] || [ "$option3" = "ON" ] || [ "$option3" = "OFF" ] || [ "$option3" = "GetMsgs" ];}; then TAM
 		else DisplayArguments
