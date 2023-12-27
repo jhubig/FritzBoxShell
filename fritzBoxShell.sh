@@ -342,20 +342,20 @@ LUAmisc(){
 		# - not working on all machines - maybe linked to different jq versions - Works with 1.7 but not with 1.5 and 1.6
 		# totalConnectionsWLAN=$(wget -O - --post-data "xhr=1&sid=$SID&page=overview&xhrId=first&noMenuRef=1" "http://$BoxIP/data.lua" 2>/dev/null | jq '.data.net.devices.[] | select(.type=="wlan" ) | length' | wc -l)
 		
-		totalConnectionsWLAN2G=$(echo $overview | grep -ow '"desc":"2,4 GHz"' | wc -l)
-		totalConnectionsWLAN5G=$(echo $overview | grep -ow '"desc":"5 GHz"' | wc -l)
-		totalConnectionsWLANguest=$(echo $overview | grep -ow '"guest":true,"online"' | wc -l)
+		totalConnectionsWLAN2G=$(grep -ow '"desc":"2,4 GHz"' <<< $overview | wc -l)
+		totalConnectionsWLAN5G=$(grep -ow '"desc":"5 GHz"' <<< $overview | wc -l)
+		totalConnectionsWLANguest=$(grep -ow '"guest":true,"online"' <<< $overview | wc -l)
 		echo "2,4G WLAN: $totalConnectionsWLAN2G"
 		echo "5G WLAN: $totalConnectionsWLAN5G"
 		echo "Guest WLAN: $totalConnectionsWLANguest"
 	elif [ "$option2" == "totalConnectionsWLAN2G" ]; then
-		totalConnectionsWLAN2G=$(echo $overview | grep -ow '"desc":"2,4 GHz"' | wc -l)
+		totalConnectionsWLAN2G=$(grep -ow '"desc":"2,4 GHz"' <<< $overview | wc -l)
 		echo $totalConnectionsWLAN2G
 	elif [ "$option2" == "totalConnectionsWLAN5G" ]; then
-		totalConnectionsWLAN5G=$(echo $overview | grep -ow '"desc":"5 GHz"' | wc -l)
+		totalConnectionsWLAN5G=$(grep -ow '"desc":"5 GHz"' <<< $overview | wc -l)
 		echo $totalConnectionsWLAN5G
 	elif [ "$option2" == "totalConnectionsWLANguest" ]; then
-		totalConnectionsWLANguest=$(echo $overview | grep -ow '"guest":true,"online"' | wc -l)
+		totalConnectionsWLANguest=$(grep -ow '"guest":true,"online"' <<< $overview | wc -l)
 		echo $totalConnectionsWLANguest
 	elif [ "$option2" == "totalConnectionsLAN" ]; then
 		# - not working on all machines - maybe linked to different jq versions - Works with 1.7 but not with 1.5 and 1.6
