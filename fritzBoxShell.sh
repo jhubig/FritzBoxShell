@@ -152,6 +152,27 @@ getSID(){
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------- FUNCTION SetInternet FOR allowing / disallowing Internet --------------------- ###
+### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+SetInternet(){
+        # Get the a valid SID
+        getSID
+
+        # param2 = profile
+        # param3 = on/off
+
+        wget -O /dev/null --post-data "sid=$SID&toBeBlocked=$option2&blocked=$option3&page=kidLis" "http://$BoxIP/data.lua" 2>/dev/null
+        echo "Kindersicherung für $option2 steht auf $option3"
+
+}
+
+
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### ----------- FUNCTION LEDswitch FOR SWITCHING ON OR OFF THE LEDS IN front of the Fritz!Box ----------- ###
 ### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -967,7 +988,7 @@ DisplayArguments() {
 	echo "| MISC_LUA        | totalConnectionsWLANguest | Number of total connected Guest WLAN clients (incl. full Mesh)              |"
 	echo "|                 | totalConnectionsLAN       | Number of total connected LAN clients (incl. full Mesh)                     |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
-    echo "| LAN             | STATE                     | Statistics for the LAN easily digestible by telegraf                        |"
+        echo "| LAN             | STATE                     | Statistics for the LAN easily digestible by telegraf                        |"
 	echo "| DSL             | STATE                     | Statistics for the DSL easily digestible by telegraf                        |"
 	echo "| WAN             | STATE                     | Statistics for the WAN easily digestible by telegraf                        |"
 	echo "| WAN             | RECONNECT                 | Ask for a new IP Address from your provider                                 |"
@@ -979,6 +1000,8 @@ DisplayArguments() {
 	echo "| REBOOT          | Box or Repeater           | Rebooting your Fritz!Box or Fritz!Repeater                                  |"
 	echo "| UPNPMetaData    | STATE or <filename>       | Full unformatted output of tr64desc.xml to console or file                  |"
 	echo "| IGDMetaData     | STATE or <filename>       | Full unformatted output of igddesc.xml to console or file                   |"
+        echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
+        echo "| KIDS            | userid and true|false     | Block / unblock internet access for certain machine                         |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| VERSION         |                           | Version of the fritzBoxShell.sh                                             |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
@@ -1095,6 +1118,8 @@ else
 		fi
 	elif [ "$option1" = "REBOOT" ]; then
 		Reboot "$option2"
+        elif [ "$option1" = "KIDS" ]; then
+                SetInternet "$option2" "$option3";
 	else DisplayArguments
 	fi
 fi
