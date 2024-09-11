@@ -1,0 +1,66 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      major_version:
+        type: number
+        required: true
+      minor_version:
+        type: number
+        required: true
+      patch_version:
+        type: number
+        required: true
+
+env:
+  ARTIFACT_DIR: FritzBoxShell-${{ github.ref_name }}
+  RELEASE_NAME: ${{ github.event_name == 'push' && github.ref_name || format('v{0}.{1}.{2}', inputs.major_version, inputs.minor_version, inputs.patch_version) }}
+
+jobs:
+  create-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: setup rsync
+        uses: GuillaumeFalourd/setup-rsync@v1.2
+      - name: git checkout
+        uses: actions/checkout@v4
+      - name: inject version automatically
+        run: sed -i "s|version=.*\.dev|version=$(echo "${{ env.RELEASE_NAME }}" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')|" fritzBoxShell.sh 
+      - name: create artifact directory
+        run: |
+          mkdir ${{ env.ARTIFACT_DIR }}
+          rsync -arv --progress --exclude=".git*" --exclude="${{ env.ARTIFACT_DIR }}" . ${{ env.ARTIFACT_DIR }}
+      - name: create .zip artifact
+        uses: thedoctor0/zip-release@0.7.5
+        with:
+          type: 'zip'
+          filename: ${{ env.RELEASE_NAME }}.zip
+          path: ./${{ env.ARTIFACT_DIR }}
+      - name: create .tar.gz artifact
+        uses: thedoctor0/zip-release@0.7.5
+        with:
+          type: 'tar'
+          filename: ${{ env.RELEASE_NAME }}.tar.gz
+          path: ./${{ env.ARTIFACT_DIR }}
+      - name: collect artifacts
+        run: |
+          mkdir artifacts
+          mv ${{ env.RELEASE_NAME }}.tar.gz ${{ env.RELEASE_NAME }}.zip artifacts
+      - name: upload artifacts
+        # @todo replace by an action like https://github.com/marketplace/actions/gh-release
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.RELEASE_NAME }}
+          path: 'artifacts/*'
+      - name: release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: |
+            artifacts/${{ env.RELEASE_NAME }}.zip
+            artifacts/${{ env.RELEASE_NAME }}.tar.gz
+

@@ -21,7 +21,7 @@
 # AVM, FRITZ!, Fritz!Box and the FRITZ! logo are registered trademarks of AVM GmbH - https://avm.de/
 
 
-version=1.0.9
+version=1.0.dev
 
 dir=$(dirname "$0")
 
