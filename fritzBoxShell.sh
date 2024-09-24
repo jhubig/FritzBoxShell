@@ -134,7 +134,7 @@ fi
 option1="$1"
 option2="$2"
 option3="$3"
-
+option4="$4"
 ### ----------------------------------------------------------------------------------------------------- ###
 ### --------- FUNCTION getSID is used to get a SID for all requests through AHA-HTTP-Interface----------- ###
 ### ------------------------------- SID is stored then in global variable ------------------------------- ###
@@ -170,6 +170,25 @@ SetInternet(){
 
 }
 
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------- FUNCTION SetProfile FOR putting a device into a profiles list ---------------- ###
+### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+SetProfile(){
+        # Get the a valid SID
+        getSID
+
+        # param2 = device name
+        # param3 = device ID
+        # param4 = profile ID
+ 
+        wget -O /dev/null  --post-data "sid=$SID&dev_name=$option2&dev=$option3&kisi_profile=$option4&page=edit_device&apply=true" "http://$BoxIP/data.lua" 2>/dev/null
+        echo "Gerät $option2 ($option3) in Profil $option4 verschoben"
+
+}
 
 
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -988,7 +1007,7 @@ DisplayArguments() {
 	echo "| MISC_LUA        | totalConnectionsWLANguest | Number of total connected Guest WLAN clients (incl. full Mesh)              |"
 	echo "|                 | totalConnectionsLAN       | Number of total connected LAN clients (incl. full Mesh)                     |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
-        echo "| LAN             | STATE                     | Statistics for the LAN easily digestible by telegraf                        |"
+    echo "| LAN             | STATE                     | Statistics for the LAN easily digestible by telegraf                        |"
 	echo "| DSL             | STATE                     | Statistics for the DSL easily digestible by telegraf                        |"
 	echo "| WAN             | STATE                     | Statistics for the WAN easily digestible by telegraf                        |"
 	echo "| WAN             | RECONNECT                 | Ask for a new IP Address from your provider                                 |"
@@ -1000,8 +1019,10 @@ DisplayArguments() {
 	echo "| REBOOT          | Box or Repeater           | Rebooting your Fritz!Box or Fritz!Repeater                                  |"
 	echo "| UPNPMetaData    | STATE or <filename>       | Full unformatted output of tr64desc.xml to console or file                  |"
 	echo "| IGDMetaData     | STATE or <filename>       | Full unformatted output of igddesc.xml to console or file                   |"
-        echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
-        echo "| KIDS            | userid and true|false     | Block / unblock internet access for certain machine                         |"
+	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
+	echo "| KIDS            | userid and true|false     | Block / unblock internet access for certain machine                         |"
+	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
+	echo "| SETPROFILE      | dev devname profile       | Put a device (name and id) into a profile                                   |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| VERSION         |                           | Version of the fritzBoxShell.sh                                             |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
@@ -1118,8 +1139,10 @@ else
 		fi
 	elif [ "$option1" = "REBOOT" ]; then
 		Reboot "$option2"
-        elif [ "$option1" = "KIDS" ]; then
+    elif [ "$option1" = "KIDS" ]; then
                 SetInternet "$option2" "$option3";
+    elif [ "$option1" = "SETPROFILE" ]; then
+    			SetProfile "$option2" "$option3";
 	else DisplayArguments
 	fi
 fi
