@@ -167,7 +167,7 @@ SetInternet(){
 
         wget -O /dev/null --post-data "sid=$SID&toBeBlocked=$option2&blocked=$option3&page=kidLis" "http://$BoxIP/data.lua" 2>/dev/null
         echo "Kindersicherung für $option2 steht auf $option3"
-
+ 
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -1049,22 +1049,17 @@ DisplayArguments() {
 	echo "| REBOOT          | Box or Repeater           | Rebooting your Fritz!Box or Fritz!Repeater                                  |"
 	echo "| UPNPMetaData    | STATE or <filename>       | Full unformatted output of tr64desc.xml to console or file                  |"
 	echo "| IGDMetaData     | STATE or <filename>       | Full unformatted output of igddesc.xml to console or file                   |"
-<<<<<<< HEAD
-    echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
-    echo "| KIDS            | userid and true|false     | Block / unblock internet access for certain machine                         |"
-    echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
-    echo "| BACKUP          | <password>			    | Parameter <password> to define a password for your conf file                |"
-=======
+	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
+	echo "| BACKUP          | <password>			    | Parameter <password> to define a password for your conf file                |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| KIDS            | userid and true|false     | Block / unblock internet access for certain machine                         |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| SETPROFILE      | dev devname profile       | Put a device (name and id) into a profile                                   |"
->>>>>>> 82bd444e447c51b4433a77032410b8f4bd90c6f8
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| VERSION         |                           | Version of the fritzBoxShell.sh                                             |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo ""
-  cat <<END
+  cat
 Supported command line options and their related environment value:
   --boxip <IP address>      <-> BoxIP="<IP address>"
   --boxuser <user>          <-> BoxUSER="<user>"
@@ -1177,15 +1172,9 @@ else
 	elif [ "$option1" = "REBOOT" ]; then
 		Reboot "$option2"
     elif [ "$option1" = "KIDS" ]; then
-<<<<<<< HEAD
-        SetInternet "$option2" "$option3";
-    elif [ "$option1" = "BACKUP" ]; then
-        confBackup "$option2";
-=======
                 SetInternet "$option2" "$option3";
     elif [ "$option1" = "SETPROFILE" ]; then
     			SetProfile "$option2" "$option3";
->>>>>>> 82bd444e447c51b4433a77032410b8f4bd90c6f8
 	else DisplayArguments
 	fi
 fi
