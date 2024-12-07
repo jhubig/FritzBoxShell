@@ -1059,7 +1059,7 @@ DisplayArguments() {
 	echo "| VERSION         |                           | Version of the fritzBoxShell.sh                                             |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo ""
-  cat
+	cat <<END
 Supported command line options and their related environment value:
   --boxip <IP address>      <-> BoxIP="<IP address>"
   --boxuser <user>          <-> BoxUSER="<user>"
@@ -1175,6 +1175,8 @@ else
                 SetInternet "$option2" "$option3";
     elif [ "$option1" = "SETPROFILE" ]; then
     			SetProfile "$option2" "$option3";
+	 elif [ "$option1" = "BACKUP" ]; then
+        confBackup "$option2";
 	else DisplayArguments
 	fi
 fi
