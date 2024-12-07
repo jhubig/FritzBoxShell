@@ -120,11 +120,17 @@ After the successful installation and setup following functions should be availa
 | UPNPMetaData | STATE or \<filename> | Full unformatted output of tr64desc.xml to console or file |
 | IGDMetaData | STATE or \<filename> | Full unformatted output of igddesc.xml to console or file |
 | VERSION | \<N/A> | Version of the fritzBoxShell.sh |
+| BACKUP | <password> | Parameter <password> to define a password for your conf file |
+| KIDS | userid and true|false | Block / unblock internet access for certain machine |
+| SETPROFILE | dev devname profile | Put a device (name and id) into a profile |
 
 ### Notes:
 
 * Script will only work if device from where the script is called is in the same network (same WiFi, LAN or VPN connection)
 * Not possible to switch ON the Fritz!Repeater after it has been switched OFF. This only works on Fritz!Box if still 2,4Ghz or 5Ghz is active or VPN connection to Fritz!Box is established
+* IMPORTANT for the backup script: It is mandatory to have 2FA deactivated for your FritzBox. To deactivate you need to once save the backup manually in your FritzBox Webinterface. Then store the SID after you did the export and got promted with the 2FA. Then take this SID and execute the following on your terminal (afterwards the 2FA should have been disabled):
+
+`curl -d "xhr=1&page=support&twofactor=1&sid=YOUR_SID" http://fritz.box/data.lua`
 
 ## External Links
 
