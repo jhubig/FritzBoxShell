@@ -939,6 +939,36 @@ Reboot() {
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------- FUNCTION FritzBox Conf Backup - TR-064 Protocol --------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+confBackup() {
+		location="/upnp/control/deviceinfo"
+		uri="urn:dslforum-org:service:DeviceInfo:1"
+		action='GetSecurityPort'
+
+		securityPort=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewSecurityPort | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+		
+		#echo "$securityPort"
+
+		location="/upnp/control/deviceconfig"
+		uri="urn:dslforum-org:service:DeviceConfig:1"
+		action='X_AVM-DE_GetConfigFile'
+		option2='testing'
+
+		curlOutput1=$(curl -s --connect-timeout 60 -k -m 60 --anyauth -u "$BoxUSER:$BoxPW" "https://$BoxIP:$securityPort$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewX_AVM-DE_Password>$option2</NewX_AVM-DE_Password></u:$action></s:Body></s:Envelope>" | grep NewX_AVM-DE_ConfigFileUrl | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+
+		# File Downlaod
+		dt=$(date '+%Y%m%d_%H%M%S');
+		
+		$(curl -s -k "$curlOutput1" -o "${dt}_SicherungEinstellungen.export" --anyauth -u "$BoxUSER:$BoxPW")
+		if [ -e "${dt}_SicherungEinstellungen.export" ]; then
+    		echo "File successfully downloaded: ${dt}_SicherungEinstellungen.export"
+		fi
+
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### ------------------------------------- FUNCTION script_version --------------------------------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
 
@@ -988,7 +1018,7 @@ DisplayArguments() {
 	echo "| MISC_LUA        | totalConnectionsWLANguest | Number of total connected Guest WLAN clients (incl. full Mesh)              |"
 	echo "|                 | totalConnectionsLAN       | Number of total connected LAN clients (incl. full Mesh)                     |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
-        echo "| LAN             | STATE                     | Statistics for the LAN easily digestible by telegraf                        |"
+    echo "| LAN             | STATE                     | Statistics for the LAN easily digestible by telegraf                        |"
 	echo "| DSL             | STATE                     | Statistics for the DSL easily digestible by telegraf                        |"
 	echo "| WAN             | STATE                     | Statistics for the WAN easily digestible by telegraf                        |"
 	echo "| WAN             | RECONNECT                 | Ask for a new IP Address from your provider                                 |"
@@ -1000,8 +1030,10 @@ DisplayArguments() {
 	echo "| REBOOT          | Box or Repeater           | Rebooting your Fritz!Box or Fritz!Repeater                                  |"
 	echo "| UPNPMetaData    | STATE or <filename>       | Full unformatted output of tr64desc.xml to console or file                  |"
 	echo "| IGDMetaData     | STATE or <filename>       | Full unformatted output of igddesc.xml to console or file                   |"
-        echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
-        echo "| KIDS            | userid and true|false     | Block / unblock internet access for certain machine                         |"
+    echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
+    echo "| KIDS            | userid and true|false     | Block / unblock internet access for certain machine                         |"
+    echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
+    echo "| BACKUP          | <password>			    | Parameter <password> to define a password for your conf file                |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| VERSION         |                           | Version of the fritzBoxShell.sh                                             |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
@@ -1118,8 +1150,10 @@ else
 		fi
 	elif [ "$option1" = "REBOOT" ]; then
 		Reboot "$option2"
-        elif [ "$option1" = "KIDS" ]; then
-                SetInternet "$option2" "$option3";
+    elif [ "$option1" = "KIDS" ]; then
+        SetInternet "$option2" "$option3";
+    elif [ "$option1" = "BACKUP" ]; then
+        confBackup "$option2";
 	else DisplayArguments
 	fi
 fi
