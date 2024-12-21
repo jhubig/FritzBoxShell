@@ -78,6 +78,10 @@ while [[ $# -gt 0 ]]; do
     backupConfFolder="$2"
     shift ; shift
     ;;
+    	--backupconffilename)
+    backupConfFilename="$2"
+    shift ; shift
+    ;;
 		*)    # unknown option
     POSITIONAL+=("$1") # save it in an array for later
     shift # past argument
@@ -1105,9 +1109,9 @@ confBackup() {
 		# File Downlaod
 		dt=$(date '+%Y%m%d_%H%M%S');
 		
-		$(curl -s -k "$curlOutput1" -o "$backupConfFolder${dt}_SicherungEinstellungen.export" --anyauth -u "$BoxUSER:$BoxPW")
-		if [ -e "${backupConfFolder}${dt}_SicherungEinstellungen.export" ]; then
-    		echo "File successfully downloaded: ${backupConfFolder}${dt}_SicherungEinstellungen.export"
+		$(curl -s -k "$curlOutput1" -o "$backupConfFolder${dt}_$backupConfFilename.export" --anyauth -u "$BoxUSER:$BoxPW")
+		if [ -e "${backupConfFolder}${dt}_${backupConfFilename}.export" ]; then
+    		echo "File successfully downloaded: ${backupConfFolder}${dt}_${backupConfFilename}.export"
 		fi
 
 }
