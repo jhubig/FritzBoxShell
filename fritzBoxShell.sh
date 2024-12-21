@@ -1117,6 +1117,37 @@ confBackup() {
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### --------------------------- FUNCTION FritzBox Send SMS - TR-064 Protocol ---------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+sendSMS() {
+		location="/upnp/control/x_tam"
+		uri="urn:dslforum-org:service:X_AVM-DE_TAM:1"
+		action='X_AVM-DE_SendSMS'
+
+		PHONE_NUMBER=$option2
+		MESSAGE=$option3
+
+		echo "WARNING: This function was never tested. Please report any issues to the developer. Thanks. Refer to Issue https://github.com/jhubig/FritzBoxShell/issues/40."
+
+		RESPONSE=$(curl -k -m 30 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" \
+			-H 'Content-Type: text/xml; charset="utf-8"' \
+			-H "SoapAction:$uri#$action" \
+			-d "<?xml version='1.0' encoding='utf-8'?>
+				<s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
+					<s:Body>
+						<u:$action xmlns:u='$uri'>
+							<NewPhoneNumber>$PHONE_NUMBER</NewPhoneNumber>
+                        	<NewMessage>$MESSAGE</NewMessage>
+						</u:$action>
+					</s:Body>
+				</s:Envelope>")
+		
+		echo "Reponse from FritzBox: $RESPONSE"
+
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### ------------------------------------- FUNCTION script_version --------------------------------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
 
@@ -1183,6 +1214,8 @@ DisplayArguments() {
 	echo "| IGDMetaData     | STATE or <filename>       | Full unformatted output of igddesc.xml to console or file                   |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| BACKUP          | <password>			    | Parameter <password> to define a password for your conf file                |"
+	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
+	echo "| SENDSMS         | <NUMBER> and <MESSAGE>    | ALPHA - NOT TESTED YET 									                  |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| KIDS            | userid and true|false     | Block / unblock internet access for certain machine                         |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
@@ -1307,11 +1340,13 @@ else
 	elif [ "$option1" = "REBOOT" ]; then
 		Reboot "$option2"
     elif [ "$option1" = "KIDS" ]; then
-                SetInternet "$option2" "$option3";
+        SetInternet "$option2" "$option3";
     elif [ "$option1" = "SETPROFILE" ]; then
-    			SetProfile "$option2" "$option3";
-	 elif [ "$option1" = "BACKUP" ]; then
+    	SetProfile "$option2" "$option3";
+	elif [ "$option1" = "BACKUP" ]; then
         confBackup "$option2";
+	elif [ "$option1" = "SENDSMS" ]; then
+        sendSMS "$option2" "$option3";
 	else DisplayArguments
 	fi
 fi
