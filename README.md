@@ -76,6 +76,8 @@ Here an example (This will enable the 2.4 Ghz network on the box with the follow
 | RepeaterIP | --repeaterip | IP or DNS of FritzRepeater |
 | RepeaterUSER | --repeateruser | Usually on Fritz!Repeater no User is existing. Can be left empty. |
 | RepeaterPW | --repeaterpw | Password for user. |
+| backupConfFolder | --backupconffolder | Folder in which the backup is stored in case you create a backup of the FritzBox conf (see BACKUP param). |
+
 
 ## Usage
 

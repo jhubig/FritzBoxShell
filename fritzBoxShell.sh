@@ -74,7 +74,7 @@ while [[ $# -gt 0 ]]; do
     OutputFilter="$2"
     shift ; shift
     ;;
-    	--backupConfFolder)
+    	--backupconffolder)
     backupConfFolder="$2"
     shift ; shift
     ;;
