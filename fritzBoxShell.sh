@@ -74,6 +74,10 @@ while [[ $# -gt 0 ]]; do
     OutputFilter="$2"
     shift ; shift
     ;;
+    	--backupConfFolder)
+    backupConfFolder="$2"
+    shift ; shift
+    ;;
 		*)    # unknown option
     POSITIONAL+=("$1") # save it in an array for later
     shift # past argument
@@ -532,6 +536,80 @@ WLANGUESTstatistics() {
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### -------------------------------- FUNCTION LANcount - TR-064 Protocol -------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+
+LANcount() {
+	# TR-064 service information
+	SERVICE="urn:dslforum-org:service:Hosts:1"
+	CONTROL_URL="/upnp/control/hosts"
+
+	total_hosts=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
+		-H 'Content-Type: text/xml; charset="utf-8"' \
+		-H "SoapAction:$SERVICE#GetHostNumberOfEntries" \
+		-d "<?xml version='1.0' encoding='utf-8'?>
+		<s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
+		<s:Body>
+			<u:GetHostNumberOfEntries xmlns:u='$SERVICE'></u:GetHostNumberOfEntries>
+		</s:Body>
+		</s:Envelope>" | grep NewHostNumberOfEntries | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+	# echo "Total number of hosts: $total_hosts"
+
+	# 2. Loop through devices and filter for Ethernet
+	# Count Ethernet devices
+	ethernet_count=0
+
+	# Maximal parallel processes
+	max_parallel=10
+	pids=()  # Array for process IDs
+
+	# Loop through all hosts and query them in parallel
+	for ((i=0; i<total_hosts; i++)); do
+		# Query the interface for each device
+		(
+			interface_type=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
+				-H "Content-Type: text/xml; charset=\"utf-8\"" \
+				-H "SoapAction:$SERVICE#GetGenericHostEntry" \
+				-d "<?xml version=\"1.0\" encoding=\"utf-8\"?>
+				<s:Envelope s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">
+					<s:Body>
+						<u:GetGenericHostEntry xmlns:u=\"$SERVICE\"><NewIndex>$i</NewIndex></u:GetGenericHostEntry>
+					</s:Body>
+				</s:Envelope>" | grep NewInterfaceType | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+
+			if [[ "$interface_type" == "Ethernet" ]]; then
+				# Count Ethernet connections
+				echo 1 >> /tmp/ethernet_count.tmp
+			fi
+		) &
+
+		# Store process IDs
+		pids+=($!)
+
+		# If the number of background processes reaches the limit, we wait for the first process
+		if (( ${#pids[@]} >= max_parallel )); then
+			# Wait for one of the running processes
+			wait "${pids[0]}"
+			# Remove the first process from the array
+			pids=("${pids[@]:1}")
+		fi
+	done
+
+	wait
+
+	# Sum of Ethernet connections
+	ethernet_count=$(wc -l < /tmp/ethernet_count.tmp)
+
+	# Print result
+	echo "Number of Ethernet connections: $ethernet_count"
+
+	# Delete temporary file
+	rm /tmp/ethernet_count.tmp
+
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### -------------------------------- FUNCTION LANstate - TR-064 Protocol -------------------------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
 
@@ -982,9 +1060,9 @@ confBackup() {
 		# File Downlaod
 		dt=$(date '+%Y%m%d_%H%M%S');
 		
-		$(curl -s -k "$curlOutput1" -o "${dt}_SicherungEinstellungen.export" --anyauth -u "$BoxUSER:$BoxPW")
-		if [ -e "${dt}_SicherungEinstellungen.export" ]; then
-    		echo "File successfully downloaded: ${dt}_SicherungEinstellungen.export"
+		$(curl -s -k "$curlOutput1" -o "$backupConfFolder${dt}_SicherungEinstellungen.export" --anyauth -u "$BoxUSER:$BoxPW")
+		if [ -e "${backupConfFolder}${dt}_SicherungEinstellungen.export" ]; then
+    		echo "File successfully downloaded: ${backupConfFolder}${dt}_SicherungEinstellungen.export"
 		fi
 
 }
@@ -1040,6 +1118,7 @@ DisplayArguments() {
 	echo "|                 | totalConnectionsLAN       | Number of total connected LAN clients (incl. full Mesh)                     |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
     echo "| LAN             | STATE                     | Statistics for the LAN easily digestible by telegraf                        |"
+    echo "| LAN             | COUNT                     | Total number of connected devices through ethernet                          |"
 	echo "| DSL             | STATE                     | Statistics for the DSL easily digestible by telegraf                        |"
 	echo "| WAN             | STATE                     | Statistics for the WAN easily digestible by telegraf                        |"
 	echo "| WAN             | RECONNECT                 | Ask for a new IP Address from your provider                                 |"
@@ -1111,6 +1190,7 @@ else
 		fi
 	elif [ "$option1" = "LAN" ]; then
 		if [ "$option2" = "STATE" ]; then LANstate "$option2";
+		elif [ "$option2" = "COUNT" ]; then LANcount "$option2";
 		else DisplayArguments
 		fi
 	elif [ "$option1" = "DSL" ]; then
