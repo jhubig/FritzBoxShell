@@ -106,8 +106,15 @@ After the successful installation and setup following functions should be availa
 | KEYLOCK | 0 or 1 | Activate (1) or deactivate (0) the Keylock (buttons de- or activated) |
 | SIGNAL_STRENGTH | 100,50,25,12 or 6 % | Set your signal strength (channel settings will then be set to manual) |
 | WIREGUARD_VPN | \<name> and 0 or 1 | Name of your connection in "" (e.g. "Test 1"). 0 (OFF) and 1 (ON) |
-| MISC_LUA | totalConnectionsWLAN/LAN | Number of total connected WLAN/LAN clients (incl. full Mesh) |
+| MISC_LUA | totalConnectionsWLAN | Number of total connected WLAN clients (incl. full Mesh) |
+| MISC_LUA | totalConnectionsWLAN2G | Number of total connected 2,4 Ghz WLAN clients (incl. full Mesh) |
+| MISC_LUA | totalConnectionsWLAN5G | Number of total connected 5 Ghz WLAN clients (incl. full Mesh) |
+| MISC_LUA | totalConnectionsWLANguest | Number of total connected Guest WLAN clients (incl. full Mesh) |
+| MISC_LUA | totalConnectionsLAN | Number of total connected LAN clients (incl. full Mesh) |
+| MISC_LUA | ReadLog | Readout of the event log on the console |
+| MISC_LUA | ResetLog | Reset the event log	|
 | LAN | STATE | Statistics for the LAN easily digestible by telegraf |
+| LAN | COUNT | Total number of connected devices through ethernet |
 | DSL | STATE | Statistics for the DSL easily digestible by telegraf |
 | WAN | STATE | Statistics for the WAN easily digestible by telegraf |
 | WAN | RECONNECT | Ask for a new IP Address from your provider |

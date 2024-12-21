@@ -155,6 +155,11 @@ getSID(){
   action='X_AVM-DE_CreateUrlSID'
 
   SID=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep "NewX_AVM-DE_UrlSID" | awk -F">" '{print $2}' | awk -F"<" '{print $1}' | awk -F"=" '{print $2}')
+  
+  if [ -z "$SID" ]; then
+    echo "Von SID could be retrieved. Please check your password and username eitehr by parameter or defined in the fritzBoxShellConfig.sh."
+  fi
+
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -414,6 +419,46 @@ LUAmisc(){
 	# Logout the "used" SID
 	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
 }
+
+### ----------------------------------------------------------------------------------------------------- ###
+### --------------------------- FUNCTION to readout event log from query.lua ---------------------------- ###
+### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+LUAmisc_Log(){
+	
+	# Get the a valid SID
+	getSID
+
+	# This could be extended in the future to also get other information
+	if [ "$option2" == "ReadLog" ]; then
+		# Readout the event log of the Fritz!Box
+		
+		log=$(curl -k -s -G "http://$BoxIP/query.lua" \
+			-d "mq_log=logger:status/log" \
+			-d "sid=$SID" | \
+			jq -r '.mq_log[] | .[0]' | \
+			tail -r)
+		
+		echo "Event Log of FritzBox:"
+		echo "$log"
+
+	elif [ "$option2" == "ResetLog" ]; then
+		reset=$(curl -s "http://$BoxIP/data.lua" --compressed --data "xhr=1&sid=$SID&lang=de&page=log&xhrId=del&del=1&useajax=1&no_sidrenew=")
+		
+		if [[ "$reset" == *"Ereignisse wurden gelöscht"* ]]; then
+			echo "The event log was successfully resetted."
+		else
+			echo "The event log was not resetted."
+		fi
+	fi
+
+	# Logout the "used" SID
+	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+}
+
 
 ### ----------------------------------------------------------------------------------------------------- ###
 ### -------------------------------- FUNCTION readout - TR-064 Protocol --------------------------------- ###
@@ -1115,7 +1160,9 @@ DisplayArguments() {
 	echo "| MISC_LUA        | totalConnectionsWLAN2G    | Number of total connected 2,4 Ghz WLAN clients (incl. full Mesh)            |"
 	echo "| MISC_LUA        | totalConnectionsWLAN5G    | Number of total connected 5 Ghz WLAN clients (incl. full Mesh)              |"
 	echo "| MISC_LUA        | totalConnectionsWLANguest | Number of total connected Guest WLAN clients (incl. full Mesh)              |"
-	echo "|                 | totalConnectionsLAN       | Number of total connected LAN clients (incl. full Mesh)                     |"
+	echo "| MISC_LUA        | totalConnectionsLAN       | Number of total connected LAN clients (incl. full Mesh)                     |"
+	echo "| MISC_LUA        | ReadLog			        | Readout of the event log on the console				                      |"
+	echo "| MISC_LUA        | ResetLog			        | Reset the event log									                      |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
     echo "| LAN             | STATE                     | Statistics for the LAN easily digestible by telegraf                        |"
     echo "| LAN             | COUNT                     | Total number of connected devices through ethernet                          |"
@@ -1237,7 +1284,9 @@ else
 		else WireguardVPNstate "$option2" "$option3";
 		fi
 	elif [ "$option1" = "MISC_LUA" ]; then
-		LUAmisc "$option2";
+		if [ "$option2" = "ReadLog" ] || [ "$option2" = "ResetLog" ]; then LUAmisc_Log
+		else LUAmisc "$option2";
+		fi
 	elif [ "$option1" = "TAM" ]; then
 		if [[ $option2 =~ ^[+-]?[0-9]+$ ]] && { [ "$option3" = "GetInfo" ] || [ "$option3" = "ON" ] || [ "$option3" = "OFF" ] || [ "$option3" = "GetMsgs" ];}; then TAM
 		else DisplayArguments
