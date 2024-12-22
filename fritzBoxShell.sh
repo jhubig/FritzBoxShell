@@ -680,6 +680,7 @@ DSLstate() {
 		action='GetInfo'
 
 		readout
+
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -737,7 +738,7 @@ WANreconnect() {
     echo ""
     echo "WAN RECONNECT initiated - Waiting for new IP... (30 seconds)"
 
-    curl -s "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?> <s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'> <s:Body> <u:$action xmlns:u='$uri' /> </s:Body> </s:Envelope>" &>/dev/null
+    curl -k -m 25 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?> <s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'> <s:Body> <u:$action xmlns:u='$uri' /> </s:Body> </s:Envelope>" &>/dev/null
 
     sleep 30
 
@@ -1071,6 +1072,45 @@ RepeaterWLANstate() {
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------------- FUNCTION WakeOnLAN - TR-064 Protocol -------------------------------- ###
+### ------------------------------- Function to switch on devices via LAN ------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+WakeOnLAN() {
+
+
+	# Building the inputs for the SOAP Action
+	DEVICE_MAC=$option2
+
+	# TR-064 service information
+	SERVICE="urn:dslforum-org:service:Hosts:1"
+	CONTROL_URL="/upnp/control/hosts"
+	ACTION='X_AVM-DE_WakeOnLANByMACAddress'
+
+	# Send the SOAP request
+	RESPONSE=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
+		-H 'Content-Type: text/xml; charset="utf-8"' \
+		-H "SoapAction: $SERVICE#$ACTION" \
+		-d "<?xml version='1.0' encoding='utf-8'?>
+		<s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
+		<s:Body>
+			<u:$ACTION xmlns:u='$SERVICE'>
+				<NewMACAddress>${DEVICE_MAC}</NewMACAddress>
+			</u:$ACTION>
+		</s:Body>
+		</s:Envelope>")
+
+	# Check the response and print the result
+	if echo "$RESPONSE" | grep -q '<u:X_AVM-DE_WakeOnLANByMACAddressResponse xmlns:u="urn:dslforum-org:service:Hosts:1"></u:X_AVM-DE_WakeOnLANByMACAddressResponse>'; then
+		echo "Wake-on-LAN request was successful sent to MAC-Address: $option2."
+	else
+		echo "Wake-on-LAN request failed or no response received (used MAC-Address: $option2)."
+	fi
+
+
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### --------------------------------- FUNCTION Reboot - TR-064 Protocol --------------------------------- ###
 ### ------------------------ Function to reboot the Fritz!Box or Fritz!Repeater ------------------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -1189,15 +1229,15 @@ DisplayArguments() {
 	echo "| LED_BRIGHTNESS  | 1 or 2 or 3               | Setting the brightness of the LEDs in front of the Fritz!Box                |"
 	echo "| KEYLOCK         | 0 or 1                    | Activate (1) or deactivate (0) the Keylock (buttons de- or activated)       |"
 	echo "| SIGNAL_STRENGTH | 100,50,25,12 or 6 %       | Set your signal strength (channel settings will then be set to manual)      |"
-	echo "| WIREGUARD_VPN   | <name> and 0 or 1         | Name of your connection in "" (e.g. "Test 1"). 0 (OFF) and 1 (ON)           |"
+	echo "| WIREGUARD_VPN   | <name> and 0 or 1         | Name of your connection in \"\" (e.g. \"Test 1\"). 0 (OFF) and 1 (ON)           |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| MISC_LUA        | totalConnectionsWLAN      | Number of total connected WLAN clients (incl. full Mesh)                    |"
 	echo "| MISC_LUA        | totalConnectionsWLAN2G    | Number of total connected 2,4 Ghz WLAN clients (incl. full Mesh)            |"
 	echo "| MISC_LUA        | totalConnectionsWLAN5G    | Number of total connected 5 Ghz WLAN clients (incl. full Mesh)              |"
 	echo "| MISC_LUA        | totalConnectionsWLANguest | Number of total connected Guest WLAN clients (incl. full Mesh)              |"
 	echo "| MISC_LUA        | totalConnectionsLAN       | Number of total connected LAN clients (incl. full Mesh)                     |"
-	echo "| MISC_LUA        | ReadLog			        | Readout of the event log on the console				                      |"
-	echo "| MISC_LUA        | ResetLog			        | Reset the event log									                      |"
+	echo "| MISC_LUA        | ReadLog                   | Readout of the event log on the console                                     |"
+	echo "| MISC_LUA        | ResetLog                  | Reset the event log                                                         |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
     echo "| LAN             | STATE                     | Statistics for the LAN easily digestible by telegraf                        |"
     echo "| LAN             | COUNT                     | Total number of connected devices through ethernet                          |"
@@ -1213,13 +1253,11 @@ DisplayArguments() {
 	echo "| UPNPMetaData    | STATE or <filename>       | Full unformatted output of tr64desc.xml to console or file                  |"
 	echo "| IGDMetaData     | STATE or <filename>       | Full unformatted output of igddesc.xml to console or file                   |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
-	echo "| BACKUP          | <password>			    | Parameter <password> to define a password for your conf file                |"
-	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
-	echo "| SENDSMS         | <NUMBER> and <MESSAGE>    | ALPHA - NOT TESTED YET 									                  |"
-	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
+	echo "| BACKUP          | <password>                | Parameter <password> to define a password for your conf file                |"
+	echo "| SENDSMS         | <NUMBER> and <MESSAGE>    | ALPHA - NOT TESTED YET                                                      |"
 	echo "| KIDS            | userid and true|false     | Block / unblock internet access for certain machine                         |"
-	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| SETPROFILE      | dev devname profile       | Put a device (name and id) into a profile                                   |"
+	echo "| WOL             | <MAC-ADDRESS>             | Send a Wake-On-LAN request to a ethernet device                             |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| VERSION         |                           | Version of the fritzBoxShell.sh                                             |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
@@ -1347,6 +1385,8 @@ else
         confBackup "$option2";
 	elif [ "$option1" = "SENDSMS" ]; then
         sendSMS "$option2" "$option3";
+	elif [ "$option1" = "WOL" ]; then
+        WakeOnLAN "$option2";
 	else DisplayArguments
 	fi
 fi
