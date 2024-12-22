@@ -539,12 +539,33 @@ WLANstatistics() {
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
-### ------------------------ FUNCTION WLANstatistics for 5 Ghz - TR-064 Protocol ------------------------ ###
+### ------------------ FUNCTION WLANstatistics for 5 Ghz - Channel 1 - TR-064 Protocol ------------------ ###
 ### ----------------------------------------------------------------------------------------------------- ###
 
 WLAN5statistics() {
 		location="/upnp/control/wlanconfig2"
 		uri="urn:dslforum-org:service:WLANConfiguration:2"
+		action='GetStatistics'
+
+		readout
+
+		action='GetTotalAssociations'
+
+		readout
+
+		action='GetInfo'
+
+		readout
+		echo "NewGHz 5"
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------ FUNCTION WLANstatistics for 5 Ghz - Channel 2 - TR-064 Protocol ------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+WLAN5statistics_ch2() {
+		location="/upnp/control/wlanconfig3"
+		uri="urn:dslforum-org:service:WLANConfiguration:3"
 		action='GetStatistics'
 
 		readout
@@ -986,10 +1007,17 @@ WLANstate() {
 		fi
 	fi
 
-	if [ "$option1" = "WLAN_5G" ] || [ "$option1" = "WLAN" ]; then
+	if [ "$option1" = "WLAN_5G" ] || [ "$option1" = "WLAN" ] || [ "$option1" = "WLAN_5G_CH2" ]; then
 		location="/upnp/control/wlanconfig2"
 		uri="urn:dslforum-org:service:WLANConfiguration:2"
 		action='SetEnable'
+
+		if [ "$option1" = "WLAN_5G_CH2" ]; then
+			location="/upnp/control/wlanconfig3"
+			uri="urn:dslforum-org:service:WLANConfiguration:3"
+			action='SetEnable'
+		fi
+
 		if [ "$option2" = "0" ] || [ "$option2" = "1" ]; then echo "Sending WLAN_5G $1"; curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewEnable>$option2</NewEnable></u:$action></s:Body></s:Envelope>" -s > /dev/null; fi # Changing the state of the WIFI
 
 		action='GetInfo'
@@ -1212,6 +1240,7 @@ DisplayArguments() {
 	echo "| WLAN_5G         | STATISTICS                | Statistics for the 5 Ghz WiFi easily digestible by telegraf                 |"
 	echo "| WLAN_5G         | QRCODE                    | Show a qr code to connect to the 5 Ghz WiFi                                 |"
 	echo "| WLAN_5G         | CHANGECH and <channel>    | Change channel of the 5 Ghz WiFi to optional <channel> (random if absent)   |"
+	echo "| WLAN_5G_CH2     | STATISTICS                | Statistics for the 2nd Ch of the 5 Ghz WiFi easily digestible by telegraf   |"
 	echo "| WLAN_GUEST      | 0 or 1 or STATE           | Switching ON, OFF or checking the state of the Guest WiFi                   |"
 	echo "| WLAN_GUEST      | STATISTICS                | Statistics for the Guest WiFi easily digestible by telegraf                 |"
 	echo "| WLAN_GUEST      | QRCODE                    | Show a qr code to connect to the Guest WiFi                                 |"
@@ -1291,20 +1320,21 @@ then
         fi
 else
 	#If argument was provided, check which function to be called
-	if [ "$option1" = "WLAN_2G" ] || [ "$option1" = "WLAN_5G" ] || [ "$option1" = "WLAN_GUEST" ] || [ "$option1" = "WLAN" ]; then
+	if [ "$option1" = "WLAN_2G" ] || [ "$option1" = "WLAN_5G" ] || [ "$option1" = "WLAN_5G_CH2" ] || [ "$option1" = "WLAN_GUEST" ] || [ "$option1" = "WLAN" ]; then
 		if [ "$option2" = "1" ]; then WLANstate "ON";
 		elif [ "$option2" = "0" ]; then WLANstate "OFF";
 		elif [ "$option2" = "STATE" ]; then WLANstate "STATE";
 		elif [ "$option2" = "CHANGECH" ]; then WLANstate "CHANGECH";
 		elif [ "$option2" = "QRCODE" ]; then
 			if ! command -v qrencode &> /dev/null; then
-				echo "Error: qrencode is request to show the qr code"
+				echo "Error: qrencode is request to show the qr code. Not installed on this machine"
 				exit 1
 			fi
 			WLANstate "QRCODE";
 		elif [ "$option2" = "STATISTICS" ]; then
 			if [ "$option1" = "WLAN_2G" ]; then WLANstatistics;
 			elif [ "$option1" = "WLAN_5G" ]; then WLAN5statistics;
+			elif [ "$option1" = "WLAN_5G_CH2" ]; then WLAN5statistics_ch2;
 			elif [ "$option1" = "WLAN_GUEST" ]; then WLANGUESTstatistics;
 			else DisplayArguments
 			fi
