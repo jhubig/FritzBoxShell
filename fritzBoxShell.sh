@@ -627,55 +627,62 @@ LANcount() {
 	# echo "Total number of hosts: $total_hosts"
 
 	# 2. Loop through devices and filter for Ethernet
-	# Count Ethernet devices
+	# Count Ethernet devices but only if hosts have been found
 	ethernet_count=0
 
-	# Maximal parallel processes
-	max_parallel=10
-	pids=()  # Array for process IDs
+	if [ "$total_hosts" -gt 0 ]; then
 
-	# Loop through all hosts and query them in parallel
-	for ((i=0; i<total_hosts; i++)); do
-		# Query the interface for each device
-		(
-			interface_type=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
-				-H "Content-Type: text/xml; charset=\"utf-8\"" \
-				-H "SoapAction:$SERVICE#GetGenericHostEntry" \
-				-d "<?xml version=\"1.0\" encoding=\"utf-8\"?>
-				<s:Envelope s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">
-					<s:Body>
-						<u:GetGenericHostEntry xmlns:u=\"$SERVICE\"><NewIndex>$i</NewIndex></u:GetGenericHostEntry>
-					</s:Body>
-				</s:Envelope>" | grep NewInterfaceType | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+		# Maximal parallel processes
+		max_parallel=10
+		pids=()  # Array for process IDs
 
-			if [[ "$interface_type" == "Ethernet" ]]; then
-				# Count Ethernet connections
-				echo 1 >> /tmp/ethernet_count.tmp
+		# Loop through all hosts and query them in parallel
+		for ((i=0; i<total_hosts; i++)); do
+			# Query the interface for each device
+			(
+				interface_type=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
+					-H "Content-Type: text/xml; charset=\"utf-8\"" \
+					-H "SoapAction:$SERVICE#GetGenericHostEntry" \
+					-d "<?xml version=\"1.0\" encoding=\"utf-8\"?>
+					<s:Envelope s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">
+						<s:Body>
+							<u:GetGenericHostEntry xmlns:u=\"$SERVICE\"><NewIndex>$i</NewIndex></u:GetGenericHostEntry>
+						</s:Body>
+					</s:Envelope>" | grep NewInterfaceType | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+
+				if [[ "$interface_type" == "Ethernet" ]]; then
+					# Count Ethernet connections
+					echo 1 >> /tmp/ethernet_count.tmp
+				fi
+			) &
+
+			# Store process IDs
+			pids+=($!)
+
+			# If the number of background processes reaches the limit, we wait for the first process
+			if (( ${#pids[@]} >= max_parallel )); then
+				# Wait for one of the running processes
+				wait "${pids[0]}"
+				# Remove the first process from the array
+				pids=("${pids[@]:1}")
 			fi
-		) &
+		done
 
-		# Store process IDs
-		pids+=($!)
+		wait
 
-		# If the number of background processes reaches the limit, we wait for the first process
-		if (( ${#pids[@]} >= max_parallel )); then
-			# Wait for one of the running processes
-			wait "${pids[0]}"
-			# Remove the first process from the array
-			pids=("${pids[@]:1}")
-		fi
-	done
+		# Sum of Ethernet connections
+		ethernet_count=$(wc -l < /tmp/ethernet_count.tmp | awk '{print $1}')
 
-	wait
+		# Print result
+		echo "NumberOfEthernetConnections: $ethernet_count"
 
-	# Sum of Ethernet connections
-	ethernet_count=$(wc -l < /tmp/ethernet_count.tmp)
+		# Delete temporary file
+		rm /tmp/ethernet_count.tmp
+	else
+		echo "NumberOfEthernetConnections: 0"
+	fi
 
-	# Print result
-	echo "Number of Ethernet connections: $ethernet_count"
-
-	# Delete temporary file
-	rm /tmp/ethernet_count.tmp
+	
 
 }
 
