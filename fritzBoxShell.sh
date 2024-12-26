@@ -772,52 +772,62 @@ LANcount() {
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
-### -------------------------------- FUNCTION serviceList - TR-064 Protocol -------------------------------- ###
+### ----------------------------- FUNCTION TR064_actions - TR-064 Protocol ------------------------------ ###
+### ---- This function allows to go through all available services and actions on your Fritz device ----- ###
+### ---------- After selecting the service and action you can launch teh according SOAP call ------------ ###
 ### ----------------------------------------------------------------------------------------------------- ###
 
 
 TR064_actions() {
-    # URL zum XML-Dokument
+    # URL to the XML document
     XML_URL="http://$BoxIP:49000/tr64desc.xml"
 
-    # Abrufen der XML-Daten mit curl
+    # Retrieve XML data with curl
     xml_data=$(curl -s "$XML_URL")
 
-    # Speichere die XML-Daten in eine temporäre Datei
+    # Save the XML data to a temporary file
     temp_file=$(mktemp)
     echo "$xml_data" > "$temp_file"
 
-    echo "Extrahiere serviceType, controlURL und SCPDURL aus jedem Service..."
+    echo "Extracting serviceType, controlURL, and SCPDURL from each service..."
 
-    # XMLstarlet verwenden, um die Service-Daten zu extrahieren
+    # Use XMLStarlet to extract the service data
     services=$(xmlstarlet sel -t -m "//*[local-name()='service']" \
         -v "concat(./*[local-name()='SCPDURL'], ' | ', ./*[local-name()='serviceType'], ' | ', ./*[local-name()='controlURL'])" -n "$temp_file")
 
     rm "$temp_file"
 
     if [ -z "$services" ]; then
-        echo "Keine Services gefunden!"
+        echo "No services found!"
         return
     fi
 
-    echo "Verfügbare Services:"
+    echo
+    echo "Available services:"
     echo "--------------------"
     echo "$services" | nl -w 2 -s '. '
 
     echo
-    echo "Bitte die Nummer des gewünschten Services eingeben:"
+    echo "Please enter the number of the desired service or type 'exit' to quit:"
     read -r service_number
 
-    selected_service=$(echo "$services" | sed -n "${service_number}p")
-    if [ -z "$selected_service" ]; then
-        echo "Ungültige Auswahl!"
+    # Exit if the user types "exit"
+    if [ "$service_number" == "exit" ]; then
+        echo "Exiting..."
         return
     fi
 
-    # Debugging: Ausgabe der ausgewählten Service-Daten
-    echo "Ausgewählter Service: $selected_service"
+    selected_service=$(echo "$services" | sed -n "${service_number}p")
+    if [ -z "$selected_service" ]; then
+        echo "Invalid selection!"
+        return
+    fi
 
-    # Extrahieren der einzelnen Felder
+    # Debugging: Print the selected service data
+    echo
+    echo "Selected service: $selected_service"
+
+    # Extract individual fields
     scpd_url=$(echo "$selected_service" | cut -d '|' -f 1 | xargs)
     service_type=$(echo "$selected_service" | cut -d '|' -f 2 | xargs)
     control_url=$(echo "$selected_service" | cut -d '|' -f 3 | xargs)
@@ -825,75 +835,118 @@ TR064_actions() {
     echo "controlURL: $control_url"
     echo "serviceType: $service_type"
 
-    # SCPD-Daten abrufen
+    # Retrieve SCPD data
     scpd_data=$(curl -s "http://$BoxIP:49000$scpd_url")
     if [ -z "$scpd_data" ]; then
-        echo "Fehler beim Abrufen der SCPD-Daten!"
+        echo "Error retrieving SCPD data!"
         return
     fi
 
     scpd_file=$(mktemp)
     echo "$scpd_data" > "$scpd_file"
 
-    echo
-    echo "Verfügbare Aktionen für den Service:"
+    echo "----------------------------------------------------------"
+    echo "Available actions for the service:"
     actions=$(xmlstarlet sel -t -m "//*[local-name()='action']" -v "concat(./*[local-name()='name'], '')" -n "$scpd_file")
     echo "$actions" | nl -w 2 -s '. '
 
-    echo "Bitte die Nummer der gewünschten Aktion eingeben:"
+    echo
+    echo "Please enter the number of the desired action or type 'exit' to quit:"
     read -r action_number
 
-    selected_action=$(echo "$actions" | sed -n "${action_number}p")
-    if [ -z "$selected_action" ]; then
-        echo "Ungültige Auswahl!"
+    # Exit if the user types "exit"
+    if [ "$action_number" == "exit" ]; then
+        echo "Exiting..."
         return
     fi
 
-    echo "Ausgewählte Aktion: $selected_action"
+    selected_action=$(echo "$actions" | sed -n "${action_number}p")
+    if [ -z "$selected_action" ]; then
+        echo "Invalid selection!"
+        return
+    fi
 
-    # Argumente mit Direction=in abrufen
+	# Retrieve and display all arguments (both 'in' and 'out' directions)
+    all_arguments=$(xmlstarlet sel -t -m "//*[local-name()='action']/*[local-name()='name' and text()='$selected_action']/../*[local-name()='argumentList']/*[local-name()='argument']" \
+        -v "concat(./*[local-name()='name'], ' (', ./*[local-name()='direction'], ')')" -n "$scpd_file")
+
+    echo
+    echo "Available arguments for action '$selected_action':"
+    echo "$all_arguments"
+
+    # Retrieve arguments with Direction=in
     in_arguments=$(xmlstarlet sel -t -m "//*[local-name()='action']/*[local-name()='name' and text()='$selected_action']/../*[local-name()='argumentList']/*[local-name()='argument']" \
         -v "concat(./*[local-name()='name'], ' (', ./*[local-name()='direction'], ')')" -n "$scpd_file" | grep "(in)")
 
-    rm "$scpd_file"
-
+    # Verwende normale Arrays statt assoziativen Arrays
     inputs=()
+
     if [ -n "$in_arguments" ]; then
-        echo "Die Aktion erfordert Eingabewerte für folgende Argumente:"
-        while read -r argument; do
-            arg_name=$(echo "$argument" | awk '{print $1}')
-            echo "Bitte Wert für $arg_name eingeben:"
-            read -r value
-            inputs["$arg_name"]="$value"
-        done <<< "$in_arguments"
+        echo "The action requires input values for the following arguments:"
+
+        # Extract only the names of arguments with direction 'in'
+        in_argument_names=$(xmlstarlet sel -t \
+            -m "//*[local-name()='action']/*[local-name()='name' and text()='$selected_action']/../*[local-name()='argumentList']/*[local-name()='argument'][./*[local-name()='direction']='in']" \
+            -v "./*[local-name()='name']" -n "$scpd_file")
+
+        if [ -z "$in_argument_names" ]; then
+            echo "Error: No input arguments could be extracted. Please check the SCPD data."
+            return 1
+        fi
+
+        in_argument_names=$(echo "$in_argument_names" | xargs)  # Trim whitespace
+
+        # Debugging: Print argument names to see their format
+        echo "Extracted input argument names:"
+        echo "$in_argument_names"
+
+        # Prompt user for input values for each argument
+        for arg_name in $in_argument_names; do
+            if [ -n "$arg_name" ]; then
+                echo -n "Please enter a value for $arg_name: "
+                read -r value
+                inputs+=("$arg_name=$value")  # Store the value in the array
+            fi
+        done
+    else
+        echo "No input arguments are required for this action."
     fi
 
-    echo "Starte SOAP-Aufruf..."
+    echo "Starting SOAP call..."
+    echo
     echo "controlURL: $control_url"
     echo "serviceType: $service_type"
     echo "selectedAction: $selected_action"
+    echo
 
-    # SOAP-Body zusammenbauen
+    # Build the SOAP body
     soap_body="<s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>"
     soap_body+="<s:Body><u:$selected_action xmlns:u='$service_type'>"
-    for arg_name in "${!inputs[@]}"; do
-        soap_body+="<$arg_name>${inputs[$arg_name]}</$arg_name>"
+
+    # Iteriere über alle Argumente und füge sie korrekt hinzu
+    for input in "${inputs[@]}"; do
+        # Extrahiere den Argumentnamen und den Wert
+        arg_name=$(echo "$input" | cut -d '=' -f 1)
+        value=$(echo "$input" | cut -d '=' -f 2)
+
+        soap_body+="<$arg_name>$value</$arg_name>"
     done
+
     soap_body+="</u:$selected_action></s:Body></s:Envelope>"
 
-    # SOAP-Aufruf ausführen
+    # Perform the SOAP call
     curl_output=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$control_url" \
         -H 'Content-Type: text/xml; charset="utf-8"' \
         -H "SoapAction:$service_type#$selected_action" \
         -d "$soap_body")
 
-    echo "SOAP-Antwort:"
+    # Output SOAP response
+    echo
+    echo "SOAP Response:"
     echo "$curl_output"
+
+	rm "$scpd_file"
 }
-
-
-
-
 
 ### ----------------------------------------------------------------------------------------------------- ###
 ### -------------------------------- FUNCTION LANstate - TR-064 Protocol -------------------------------- ###
@@ -1762,6 +1815,7 @@ DisplayArguments() {
 	echo "| WOL             | <MAC-ADDRESS>             | Send a Wake-On-LAN request to a ethernet device                             |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| VERSION         |                           | Version of the fritzBoxShell.sh                                             |"
+	echo "| ACTIONS         |                           | Loop through all services and actions and make SOAP CALL                    |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo ""
 	cat <<END

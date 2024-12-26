@@ -129,10 +129,11 @@ After the successful installation and setup following functions should be availa
 | REBOOT | Box or Repeater | Rebooting your Fritz!Box or Fritz!Repeater |
 | UPNPMetaData | STATE or \<filename> | Full unformatted output of tr64desc.xml to console or file |
 | IGDMetaData | STATE or \<filename> | Full unformatted output of igddesc.xml to console or file |
-| VERSION | \<N/A> | Version of the fritzBoxShell.sh |
 | BACKUP | <password_for_backup> | Parameter <password> to define a password for your conf file |
 | KIDS | userid and true|false | Block / unblock internet access for certain machine |
 | SETPROFILE | dev devname profile | Put a device (name and id) into a profile |
+| VERSION | \<N/A> | Version of the fritzBoxShell.sh |
+| ACTIONS | \<N/A> | Loop through all services and actions and make SOAP CALL|
 
 ### Notes:
 
