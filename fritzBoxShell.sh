@@ -1015,15 +1015,22 @@ WANreconnect() {
     #Display IP Address before reconnect
     location="/igdupnp/control/WANIPConn1"
     uri="urn:schemas-upnp-org:service:WANIPConnection:1"
-    action='GetConnectionTypeInfo'
-
     action='GetExternalIPAddress'
 
     readout
 
     location="/igdupnp/control/WANIPConn1"
-		uri="urn:schemas-upnp-org:service:WANIPConnection:1"
-		action='ForceTermination'
+	uri="urn:schemas-upnp-org:service:WANIPConnection:1"
+	action='ForceTermination'
+
+	if verify_action_availability "$location" "$uri" "$action"; then
+		# Do nothing but continue script execution
+		:
+	else
+		echo "Action '$action' canot be executed, because it seems to be not available."
+		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		return
+	fi
 
     echo ""
     echo "WAN RECONNECT initiated - Waiting for new IP... (30 seconds)"
@@ -1038,8 +1045,6 @@ WANreconnect() {
     #Display IP Address after reconnect
     location="/igdupnp/control/WANIPConn1"
     uri="urn:schemas-upnp-org:service:WANIPConnection:1"
-    action='GetConnectionTypeInfo'
-
     action='GetExternalIPAddress'
 
     readout
@@ -1164,12 +1169,6 @@ Deviceinfo() {
 		action='GetInfo'
 
 		readout
-
-#		location="/upnp/control/userif"
-#		uri="urn:dslforum-org:service:UserInterface:1"
-#		action='X_AVM-DE_GetInfo'
-
-#		readout
 
 }
 
