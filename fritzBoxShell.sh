@@ -470,9 +470,77 @@ LUAmisc_Log(){
 ### ----------------------------------------------------------------------------------------------------- ###
 
 readout() {
-		curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p")
-		echo "$curlOutput1"
+
+		# Before performing the readout, check if the action is available
+		if verify_action_availability "$location" "$uri" "$action"; then
+			curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p")
+			echo "$curlOutput1"
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		fi
 }
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------ FUNCTION check if action available - TR-064 Protocol ----------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+# Function to verify if an action is available
+verify_action_availability() {
+    local location=$1
+    local uri=$2
+    local action=$3
+
+    # Retrieve tr64desc.xml
+    tr64desc=$(curl -s "http://$BoxIP:49000/tr64desc.xml")
+    if [ -z "$tr64desc" ]; then
+        echo "Error: Could not retrieve tr64desc.xml."
+        return 1
+    fi
+
+    # Temporary file for the XML data
+    temp_file=$(mktemp)
+    echo "$tr64desc" > "$temp_file"
+
+    # Find the SCPD URL
+    scpd_url=$(xmlstarlet sel -t -m "//*[local-name()='service']" \
+        -if "./*[local-name()='controlURL'][text()='$location']" \
+        -v "./*[local-name()='SCPDURL']" -n "$temp_file" | head -n 1)
+
+    rm "$temp_file"
+
+    if [ -z "$scpd_url" ]; then
+        echo "Error: No SCPD URL found for the provided controlURL ($location)."
+        return 1
+    fi
+
+    # Retrieve SCPD data
+    scpd_data=$(curl -s "http://$BoxIP:49000$scpd_url")
+    if [ -z "$scpd_data" ]; then
+        echo "Error: SCPD data could not be retrieved for the URL ($scpd_url)."
+        return 1
+    fi
+
+    # Temporary file for the SCPD data
+    scpd_file=$(mktemp)
+    echo "$scpd_data" > "$scpd_file"
+
+    # Check if the action is available
+    available_action=$(xmlstarlet sel -t -m "//*[local-name()='action']" \
+        -if "./*[local-name()='name'][text()='$action']" \
+        -v "./*[local-name()='name']" -n "$scpd_file" | head -n 1)
+
+    rm "$scpd_file"
+
+    if [ -n "$available_action" ]; then
+        # echo "Action '$action' is available for the service '$uri'."
+        return 0
+    else
+        echo "Error: Action '$action' is not available for the service '$uri'."
+        return 1
+    fi
+}
+
 
 ### ----------------------------------------------------------------------------------------------------- ###
 ### ------------------------------ FUNCTION UPNPMetaData - TR-064 Protocol ------------------------------ ###
@@ -508,12 +576,20 @@ getWLANGUESTNum() {
         uri="urn:dslforum-org:service:WLANConfiguration:$wlanNum"
         action="X_AVM-DE_GetWLANExtInfo"
 
-        wlanType=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewX_AVM-DE_APType | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+		# Check availability of the defined action
+		if verify_action_availability "$location" "$uri" "$action"; then
+			echo "Starte readout..."
+			# Hier die tatsächliche Funktion aufrufen, wenn die Aktion verfügbar ist
+			wlanType=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewX_AVM-DE_APType | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
 
-        if [ "$wlanType" = "guest" ]; then
-            echo $wlanNum
-			break
-        fi
+			if [ "$wlanType" = "guest" ]; then
+				echo $wlanNum
+				break
+			fi
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		fi
     done
 }
 
@@ -615,6 +691,15 @@ LANcount() {
 	SERVICE="urn:dslforum-org:service:Hosts:1"
 	CONTROL_URL="/upnp/control/hosts"
 
+	if verify_action_availability "$CONTROL_URL" "$SERVICE" "GetHostNumberOfEntries"; then
+			# Do nothing but continue script execution
+			:
+	else
+		echo "Action '$action' canot be executed, because it seems to be not available."
+		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		return
+	fi
+
 	total_hosts=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
 		-H 'Content-Type: text/xml; charset="utf-8"' \
 		-H "SoapAction:$SERVICE#GetHostNumberOfEntries" \
@@ -685,6 +770,130 @@ LANcount() {
 	
 
 }
+
+### ----------------------------------------------------------------------------------------------------- ###
+### -------------------------------- FUNCTION serviceList - TR-064 Protocol -------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+
+TR064_actions() {
+    # URL zum XML-Dokument
+    XML_URL="http://$BoxIP:49000/tr64desc.xml"
+
+    # Abrufen der XML-Daten mit curl
+    xml_data=$(curl -s "$XML_URL")
+
+    # Speichere die XML-Daten in eine temporäre Datei
+    temp_file=$(mktemp)
+    echo "$xml_data" > "$temp_file"
+
+    echo "Extrahiere serviceType, controlURL und SCPDURL aus jedem Service..."
+
+    # XMLstarlet verwenden, um die Service-Daten zu extrahieren
+    services=$(xmlstarlet sel -t -m "//*[local-name()='service']" \
+        -v "concat(./*[local-name()='SCPDURL'], ' | ', ./*[local-name()='serviceType'], ' | ', ./*[local-name()='controlURL'])" -n "$temp_file")
+
+    rm "$temp_file"
+
+    if [ -z "$services" ]; then
+        echo "Keine Services gefunden!"
+        return
+    fi
+
+    echo "Verfügbare Services:"
+    echo "--------------------"
+    echo "$services" | nl -w 2 -s '. '
+
+    echo
+    echo "Bitte die Nummer des gewünschten Services eingeben:"
+    read -r service_number
+
+    selected_service=$(echo "$services" | sed -n "${service_number}p")
+    if [ -z "$selected_service" ]; then
+        echo "Ungültige Auswahl!"
+        return
+    fi
+
+    # Debugging: Ausgabe der ausgewählten Service-Daten
+    echo "Ausgewählter Service: $selected_service"
+
+    # Extrahieren der einzelnen Felder
+    scpd_url=$(echo "$selected_service" | cut -d '|' -f 1 | xargs)
+    service_type=$(echo "$selected_service" | cut -d '|' -f 2 | xargs)
+    control_url=$(echo "$selected_service" | cut -d '|' -f 3 | xargs)
+
+    echo "controlURL: $control_url"
+    echo "serviceType: $service_type"
+
+    # SCPD-Daten abrufen
+    scpd_data=$(curl -s "http://$BoxIP:49000$scpd_url")
+    if [ -z "$scpd_data" ]; then
+        echo "Fehler beim Abrufen der SCPD-Daten!"
+        return
+    fi
+
+    scpd_file=$(mktemp)
+    echo "$scpd_data" > "$scpd_file"
+
+    echo
+    echo "Verfügbare Aktionen für den Service:"
+    actions=$(xmlstarlet sel -t -m "//*[local-name()='action']" -v "concat(./*[local-name()='name'], '')" -n "$scpd_file")
+    echo "$actions" | nl -w 2 -s '. '
+
+    echo "Bitte die Nummer der gewünschten Aktion eingeben:"
+    read -r action_number
+
+    selected_action=$(echo "$actions" | sed -n "${action_number}p")
+    if [ -z "$selected_action" ]; then
+        echo "Ungültige Auswahl!"
+        return
+    fi
+
+    echo "Ausgewählte Aktion: $selected_action"
+
+    # Argumente mit Direction=in abrufen
+    in_arguments=$(xmlstarlet sel -t -m "//*[local-name()='action']/*[local-name()='name' and text()='$selected_action']/../*[local-name()='argumentList']/*[local-name()='argument']" \
+        -v "concat(./*[local-name()='name'], ' (', ./*[local-name()='direction'], ')')" -n "$scpd_file" | grep "(in)")
+
+    rm "$scpd_file"
+
+    inputs=()
+    if [ -n "$in_arguments" ]; then
+        echo "Die Aktion erfordert Eingabewerte für folgende Argumente:"
+        while read -r argument; do
+            arg_name=$(echo "$argument" | awk '{print $1}')
+            echo "Bitte Wert für $arg_name eingeben:"
+            read -r value
+            inputs["$arg_name"]="$value"
+        done <<< "$in_arguments"
+    fi
+
+    echo "Starte SOAP-Aufruf..."
+    echo "controlURL: $control_url"
+    echo "serviceType: $service_type"
+    echo "selectedAction: $selected_action"
+
+    # SOAP-Body zusammenbauen
+    soap_body="<s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>"
+    soap_body+="<s:Body><u:$selected_action xmlns:u='$service_type'>"
+    for arg_name in "${!inputs[@]}"; do
+        soap_body+="<$arg_name>${inputs[$arg_name]}</$arg_name>"
+    done
+    soap_body+="</u:$selected_action></s:Body></s:Envelope>"
+
+    # SOAP-Aufruf ausführen
+    curl_output=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$control_url" \
+        -H 'Content-Type: text/xml; charset="utf-8"' \
+        -H "SoapAction:$service_type#$selected_action" \
+        -d "$soap_body")
+
+    echo "SOAP-Antwort:"
+    echo "$curl_output"
+}
+
+
+
+
 
 ### ----------------------------------------------------------------------------------------------------- ###
 ### -------------------------------- FUNCTION LANstate - TR-064 Protocol -------------------------------- ###
@@ -922,24 +1131,106 @@ TAM() {
 
 		if [ "$option3" = "GetInfo" ]; then
 			action='GetInfo'
-			curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewIndex>$option2</NewIndex></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p"
+
+			if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+			else
+				echo "Action '$action' canot be executed, because it seems to be not available."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				return
+			fi
+			
+			curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" \
+			-H 'Content-Type: text/xml; charset="utf-8"' \
+			-H "SoapAction:$uri#$action" \
+			-d "<?xml version='1.0' encoding='utf-8'?>
+				<s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
+					<s:Body>
+						<u:$action xmlns:u='$uri'>
+							<NewIndex>$option2</NewIndex>
+						</u:$action>
+					</s:Body>
+				</s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p"
 
 		# Switch ON the TAM
 	elif [ "$option3" = "ON" ]; then
 			action='SetEnable'
-			curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewIndex>$option2</NewIndex><NewEnable>1</NewEnable></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p"
+
+			if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+			else
+				echo "Action '$action' canot be executed, because it seems to be not available."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				return
+			fi
+
+			curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" \
+			-H 'Content-Type: text/xml; charset="utf-8"' \
+			-H "SoapAction:$uri#$action" \
+			-d "<?xml version='1.0' encoding='utf-8'?>
+				<s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
+					<s:Body>
+						<u:$action xmlns:u='$uri'>
+							<NewIndex>$option2</NewIndex>
+							<NewEnable>1</NewEnable>
+						</u:$action>
+					</s:Body>
+				</s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p"
 			echo "Answering machine is switched ON"
 
 		# Switch OFF the TAM
 	elif [ "$option3" = "OFF" ]; then
 			action='SetEnable'
-			curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewIndex>$option2</NewIndex><NewEnable>0</NewEnable></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p"
+
+			if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+			else
+				echo "Action '$action' canot be executed, because it seems to be not available."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				return
+			fi
+
+			curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" \
+			-H 'Content-Type: text/xml; charset="utf-8"' \
+			-H "SoapAction:$uri#$action" \
+			-d "<?xml version='1.0' encoding='utf-8'?>
+					<s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
+						<s:Body>
+							<u:$action xmlns:u='$uri'>
+								<NewIndex>$option2</NewIndex>
+								<NewEnable>0</NewEnable>
+							</u:$action>
+						</s:Body>
+					</s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p"
 			echo "Answering machine is switched OFF"
 
 		# Get CallList from TAM
 	elif [ "$option3" = "GetMsgs" ]; then
 			action='GetMessageList'
-			curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewIndex>$option2</NewIndex></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p")
+
+			if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+			else
+				echo "Action '$action' canot be executed, because it seems to be not available."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				return
+			fi
+
+			curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" \
+			-H 'Content-Type: text/xml; charset="utf-8"' \
+			-H "SoapAction:$uri#$action" \
+			-d "<?xml version='1.0' encoding='utf-8'?>
+				<s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
+					<s:Body>
+						<u:$action xmlns:u='$uri'>
+							<NewIndex>$option2</NewIndex>
+						</u:$action>
+					</s:Body>
+				</s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' |sed -En "s/<(.*)>(.*)/\1 \2/p")
 
 			#WGETresult=$(wget -O - "$curlOutput1" 2>/dev/null) Doesn't work with double quotes. Therefore in line below the shellcheck fails.
 			WGETresult=$(wget -O - "$curlOutput1" 2>/dev/null)
@@ -959,7 +1250,27 @@ OnTel() {
 
 		if [ "$option2" = "GetCallList" ]; then
 			action='GetCallList'
-			listurl=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' | sed -En "s/<(.*)>(.*)/\1 \2/p" | awk '{print $2}')
+
+			if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+			else
+				echo "Action '$action' canot be executed, because it seems to be not available."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				return
+			fi
+
+			listurl=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" \
+			-H 'Content-Type: text/xml; charset="utf-8"' \
+			-H "SoapAction:$uri#$action" \
+			-d "<?xml version='1.0' encoding='utf-8'?>
+				<s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
+					<s:Body>
+						<u:$action xmlns:u='$uri'>
+						</u:$action>
+					</s:Body>
+				</s:Envelope>" | grep "<New" | awk -F"</" '{print $1}' | sed -En "s/<(.*)>(.*)/\1 \2/p" | awk '{print $2}')
+
 			curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "$listurl&days=$option3"
 		fi
 
@@ -978,9 +1289,29 @@ WLANstate() {
 		location="/upnp/control/wlanconfig1"
 		uri="urn:dslforum-org:service:WLANConfiguration:1"
 		action='SetEnable'
+		
+		if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			return
+		fi
+
 		if [ "$option2" = "0" ] || [ "$option2" = "1" ]; then echo "Sending WLAN_2G $1"; curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewEnable>$option2</NewEnable></u:$action></s:Body></s:Envelope>" -s > /dev/null; fi # Changing the state of the WIFI
 
 		action='GetInfo'
+		
+		if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			return
+		fi
+
 		if [ "$option2" = "STATE" ]; then
 			curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewEnable | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
 			curlOutput2=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewSSID | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
@@ -988,6 +1319,16 @@ WLANstate() {
 		fi
 
 		action='SetChannel'
+		
+		if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			return
+		fi
+		
 		if [ "$option2" = "CHANGECH" ]; then
 			channels=("1" "2" "3" "4" "5" "6" "7" "8" "9" "10" "11" "12" "13")
 			case " ${channels[*]} " in
@@ -1004,6 +1345,16 @@ WLANstate() {
 
 
 		action='GetSSID'
+		
+		if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			return
+		fi
+
 		if [ "$option2" =  "QRCODE" ]; then
 			ssid=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewSSID | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
 			action='GetSecurityKeys'
@@ -1024,6 +1375,15 @@ WLANstate() {
 			uri="urn:dslforum-org:service:WLANConfiguration:3"
 			action='SetEnable'
 		fi
+		
+		if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			return
+		fi
 
 		if [ "$option2" = "0" ] || [ "$option2" = "1" ]; then echo "Sending WLAN_5G $1"; curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewEnable>$option2</NewEnable></u:$action></s:Body></s:Envelope>" -s > /dev/null; fi # Changing the state of the WIFI
 
@@ -1035,6 +1395,16 @@ WLANstate() {
 		fi
 
 		action='SetChannel'
+		
+		if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			return
+		fi
+
 		if [ "$option2" = "CHANGECH" ]; then
 			channels=("36" "40" "44" "48" "52" "56" "60" "64" "100" "104" "108" "112" "116" "120" "124" "128") 
 			case " ${channels[*]} " in
@@ -1050,6 +1420,16 @@ WLANstate() {
 		fi
 
 		action='GetSSID'
+		
+		if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			return
+		fi
+
 		if [ "$option2" =  "QRCODE" ]; then
 			ssid=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewSSID | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
 			action='GetSecurityKeys'
@@ -1068,9 +1448,29 @@ WLANstate() {
 			location="/upnp/control/wlanconfig$wlanNum"
 			uri="urn:dslforum-org:service:WLANConfiguration:$wlanNum"
 			action='SetEnable'
+		
+			if verify_action_availability "$location" "$uri" "$action"; then
+					# Do nothing but continue script execution
+					:
+			else
+				echo "Action '$action' canot be executed, because it seems to be not available."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				return
+			fi
+
 			if [ "$option2" = "0" ] || [ "$option2" = "1" ]; then echo "Sending WLAN_GUEST $1"; curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewEnable>$option2</NewEnable></u:$action></s:Body></s:Envelope>" -s > /dev/null; fi # Changing the state of the WIFI
 
 			action='GetInfo'
+		
+			if verify_action_availability "$location" "$uri" "$action"; then
+					# Do nothing but continue script execution
+					:
+			else
+				echo "Action '$action' canot be executed, because it seems to be not available."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				return
+			fi
+
 			if [ "$option2" = "STATE" ]; then
 				curlOutput1=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewEnable | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
 				curlOutput2=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewSSID | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
@@ -1078,6 +1478,16 @@ WLANstate() {
 			fi
 
 			action='GetSSID'
+		
+			if verify_action_availability "$location" "$uri" "$action"; then
+					# Do nothing but continue script execution
+					:
+			else
+				echo "Action '$action' canot be executed, because it seems to be not available."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				return
+			fi
+
 			if [ "$option2" =  "QRCODE" ]; then
 				ssid=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewSSID | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
 				action='GetSecurityKeys'
@@ -1102,6 +1512,16 @@ RepeaterWLANstate() {
 	location="/upnp/control/wlanconfig1"
 	uri="urn:dslforum-org:service:WLANConfiguration:1"
 	action='SetEnable'
+		
+	if verify_action_availability "$location" "$uri" "$action"; then
+			# Do nothing but continue script execution
+			:
+	else
+		echo "Action '$action' canot be executed, because it seems to be not available."
+		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		return
+	fi
+
 	echo "Sending Repeater WLAN $1"; curl -k -m 5 --anyauth -u "$RepeaterUSER:$RepeaterPW" "http://$RepeaterIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewEnable>$option2</NewEnable></u:$action></s:Body></s:Envelope>" -s > /dev/null
 
 }
@@ -1121,6 +1541,15 @@ WakeOnLAN() {
 	SERVICE="urn:dslforum-org:service:Hosts:1"
 	CONTROL_URL="/upnp/control/hosts"
 	ACTION='X_AVM-DE_WakeOnLANByMACAddress'
+
+	if verify_action_availability "$CONTROL_URL" "$SERVICE" "$ACTION"; then
+			# Do nothing but continue script execution
+			:
+	else
+		echo "Action '$action' canot be executed, because it seems to be not available."
+		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		return
+	fi
 
 	# Send the SOAP request
 	RESPONSE=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
@@ -1157,6 +1586,16 @@ Reboot() {
 	location="/upnp/control/deviceconfig"
 	uri="urn:dslforum-org:service:DeviceConfig:1"
 	action='Reboot'
+		
+	if verify_action_availability "$location" "$uri" "$action"; then
+			# Do nothing but continue script execution
+			:
+	else
+		echo "Action '$action' canot be executed, because it seems to be not available."
+		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		return
+	fi
+
 	if [[ "$option2" = "Box" ]]; then echo "Sending Reboot command to $1"; curl -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" -s > /dev/null; fi
 	if [[ "$option2" = "Repeater" ]]; then echo "Sending Reboot command to $1"; curl -k -m 5 --anyauth -u "$RepeaterUSER:$RepeaterPW" "http://$RepeaterIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" -s > /dev/null; fi
 }
@@ -1169,6 +1608,15 @@ confBackup() {
 		location="/upnp/control/deviceinfo"
 		uri="urn:dslforum-org:service:DeviceInfo:1"
 		action='GetSecurityPort'
+		
+		if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			return
+		fi
 
 		securityPort=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewSecurityPort | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
 		
@@ -1178,6 +1626,15 @@ confBackup() {
 		uri="urn:dslforum-org:service:DeviceConfig:1"
 		action='X_AVM-DE_GetConfigFile'
 		option2='testing'
+			
+		if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			return
+		fi
 
 		curlOutput1=$(curl -s --connect-timeout 60 -k -m 60 --anyauth -u "$BoxUSER:$BoxPW" "https://$BoxIP:$securityPort$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewX_AVM-DE_Password>$option2</NewX_AVM-DE_Password></u:$action></s:Body></s:Envelope>" | grep NewX_AVM-DE_ConfigFileUrl | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
 
@@ -1199,6 +1656,15 @@ sendSMS() {
 		location="/upnp/control/x_tam"
 		uri="urn:dslforum-org:service:X_AVM-DE_TAM:1"
 		action='X_AVM-DE_SendSMS'
+
+		if verify_action_availability "$location" "$uri" "$action"; then
+				# Do nothing but continue script execution
+				:
+		else
+			echo "Action '$action' canot be executed, because it seems to be not available."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			return
+		fi
 
 		PHONE_NUMBER=$option2
 		MESSAGE=$option3
@@ -1323,6 +1789,8 @@ elif [ -z "$2" ]
 then
         if [ "$option1" = "VERSION" ]; then
                 script_version
+		elif [ "$option1" = "ACTIONS" ]; then
+			TR064_actions
         else DisplayArguments
         fi
 else
