@@ -692,11 +692,11 @@ LANcount() {
 	CONTROL_URL="/upnp/control/hosts"
 
 	if verify_action_availability "$CONTROL_URL" "$SERVICE" "GetHostNumberOfEntries"; then
-			# Do nothing but continue script execution
-			:
+		# Do nothing but continue script execution
+		:
 	else
-		echo "Action '$action' canot be executed, because it seems to be not available."
-		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		echo "Action '$action' cannot be executed, because it seems to be not available."
+		echo "You can try with 'fritzBoxShell.sh ACTIONS' to get a list of available services and actions."
 		return
 	fi
 
@@ -709,67 +709,71 @@ LANcount() {
 			<u:GetHostNumberOfEntries xmlns:u='$SERVICE'></u:GetHostNumberOfEntries>
 		</s:Body>
 		</s:Envelope>" | grep NewHostNumberOfEntries | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
-	# echo "Total number of hosts: $total_hosts"
 
-	# 2. Loop through devices and filter for Ethernet
-	# Count Ethernet devices but only if hosts have been found
-	ethernet_count=0
+	# Check if total_hosts has a valid numerical value
+	if [[ "$total_hosts" =~ ^[0-9]+$ ]]; then
+		if [ "$total_hosts" -gt 0 ]; then
+			# Maximal parallel processes
+			max_parallel=10
+			pids=()  # Array for process IDs
 
-	if [ "$total_hosts" -gt 0 ]; then
+			# Loop through all hosts and query them in parallel
+			for ((i=0; i<total_hosts; i++)); do
+				# Query the interface for each device
+				(
+					interface_type=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
+						-H "Content-Type: text/xml; charset=\"utf-8\"" \
+						-H "SoapAction:$SERVICE#GetGenericHostEntry" \
+						-d "<?xml version=\"1.0\" encoding=\"utf-8\"?>
+						<s:Envelope s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">
+							<s:Body>
+								<u:GetGenericHostEntry xmlns:u=\"$SERVICE\"><NewIndex>$i</NewIndex></u:GetGenericHostEntry>
+							</s:Body>
+						</s:Envelope>" | grep NewInterfaceType | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
 
-		# Maximal parallel processes
-		max_parallel=10
-		pids=()  # Array for process IDs
+					if [[ "$interface_type" == "Ethernet" ]]; then
+						# Count Ethernet connections
+						echo 1 >> /tmp/ethernet_count.tmp
+					fi
+				) &
 
-		# Loop through all hosts and query them in parallel
-		for ((i=0; i<total_hosts; i++)); do
-			# Query the interface for each device
-			(
-				interface_type=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
-					-H "Content-Type: text/xml; charset=\"utf-8\"" \
-					-H "SoapAction:$SERVICE#GetGenericHostEntry" \
-					-d "<?xml version=\"1.0\" encoding=\"utf-8\"?>
-					<s:Envelope s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">
-						<s:Body>
-							<u:GetGenericHostEntry xmlns:u=\"$SERVICE\"><NewIndex>$i</NewIndex></u:GetGenericHostEntry>
-						</s:Body>
-					</s:Envelope>" | grep NewInterfaceType | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+				# Store process IDs
+				pids+=($!)
 
-				if [[ "$interface_type" == "Ethernet" ]]; then
-					# Count Ethernet connections
-					echo 1 >> /tmp/ethernet_count.tmp
+				# If the number of background processes reaches the limit, we wait for the first process
+				if (( ${#pids[@]} >= max_parallel )); then
+					# Wait for one of the running processes
+					wait "${pids[0]}"
+					# Remove the first process from the array
+					pids=("${pids[@]:1}")
 				fi
-			) &
+			done
 
-			# Store process IDs
-			pids+=($!)
+			wait
 
-			# If the number of background processes reaches the limit, we wait for the first process
-			if (( ${#pids[@]} >= max_parallel )); then
-				# Wait for one of the running processes
-				wait "${pids[0]}"
-				# Remove the first process from the array
-				pids=("${pids[@]:1}")
+			# Sum of Ethernet connections
+			if [[ -s /tmp/ethernet_count.tmp ]]; then
+				ethernet_count=$(wc -l < /tmp/ethernet_count.tmp | awk '{print $1}')
+			else
+				ethernet_count=0
 			fi
-		done
 
-		wait
+			# Print result
+			echo "NumberOfEthernetConnections: $ethernet_count"
 
-		# Sum of Ethernet connections
-		ethernet_count=$(wc -l < /tmp/ethernet_count.tmp | awk '{print $1}')
-
-		# Print result
-		echo "NumberOfEthernetConnections: $ethernet_count"
-
-		# Delete temporary file
-		rm /tmp/ethernet_count.tmp
+			# Delete temporary file if it exists
+			if [[ -e /tmp/ethernet_count.tmp ]]; then
+				rm /tmp/ethernet_count.tmp
+			fi
+		else
+			echo "NumberOfEthernetConnections: 0"
+		fi
 	else
-		echo "NumberOfEthernetConnections: 0"
+		echo "Error: Unable to determine the total number of hosts. Check your connection or credentials."
+		return
 	fi
-
-	
-
 }
+
 
 ### ----------------------------------------------------------------------------------------------------- ###
 ### ----------------------------- FUNCTION TR064_actions - TR-064 Protocol ------------------------------ ###
