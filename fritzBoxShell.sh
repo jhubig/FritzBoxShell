@@ -380,7 +380,7 @@ WireguardVPNstate(){
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
-### -------------------------------- FUNCTION readout - TR-064 Protocol --------------------------------- ###
+### ------------------------- FUNCTION get_filtered_clients - TR-064 Protocol --------------------------- ###
 ### -------------- Function to get total number of 2.4 Ghz, 5 Ghz, ethernet or all clients -------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
 
@@ -665,7 +665,7 @@ readout() {
 			echo "$curlOutput1"
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 		fi
 }
 
@@ -776,7 +776,7 @@ getWLANGUESTNum() {
 			fi
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 		fi
     done
 }
@@ -1220,7 +1220,7 @@ WANreconnect() {
 		:
 	else
 		echo "Action '$action' canot be executed, because it seems to be not available."
-		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 		return
 	fi
 
@@ -1381,7 +1381,7 @@ TAM() {
 				:
 			else
 				echo "Action '$action' canot be executed, because it seems to be not available."
-				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 				return
 			fi
 			
@@ -1406,7 +1406,7 @@ TAM() {
 				:
 			else
 				echo "Action '$action' canot be executed, because it seems to be not available."
-				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 				return
 			fi
 
@@ -1433,7 +1433,7 @@ TAM() {
 				:
 			else
 				echo "Action '$action' canot be executed, because it seems to be not available."
-				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 				return
 			fi
 
@@ -1460,7 +1460,7 @@ TAM() {
 				:
 			else
 				echo "Action '$action' canot be executed, because it seems to be not available."
-				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 				return
 			fi
 
@@ -1500,7 +1500,7 @@ OnTel() {
 				:
 			else
 				echo "Action '$action' canot be executed, because it seems to be not available."
-				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 				return
 			fi
 
@@ -1539,7 +1539,7 @@ WLANstate() {
 				:
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 			return
 		fi
 
@@ -1552,7 +1552,7 @@ WLANstate() {
 				:
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 			return
 		fi
 
@@ -1569,7 +1569,7 @@ WLANstate() {
 				:
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 			return
 		fi
 		
@@ -1595,7 +1595,7 @@ WLANstate() {
 				:
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 			return
 		fi
 
@@ -1625,7 +1625,7 @@ WLANstate() {
 				:
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 			return
 		fi
 
@@ -1645,7 +1645,7 @@ WLANstate() {
 				:
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 			return
 		fi
 
@@ -1670,7 +1670,7 @@ WLANstate() {
 				:
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 			return
 		fi
 
@@ -1698,7 +1698,7 @@ WLANstate() {
 					:
 			else
 				echo "Action '$action' canot be executed, because it seems to be not available."
-				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 				return
 			fi
 
@@ -1711,7 +1711,7 @@ WLANstate() {
 					:
 			else
 				echo "Action '$action' canot be executed, because it seems to be not available."
-				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 				return
 			fi
 
@@ -1728,7 +1728,7 @@ WLANstate() {
 					:
 			else
 				echo "Action '$action' canot be executed, because it seems to be not available."
-				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+				echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 				return
 			fi
 
@@ -1762,7 +1762,7 @@ RepeaterWLANstate() {
 			:
 	else
 		echo "Action '$action' canot be executed, because it seems to be not available."
-		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 		return
 	fi
 
@@ -1791,7 +1791,7 @@ WakeOnLAN() {
 			:
 	else
 		echo "Action '$action' canot be executed, because it seems to be not available."
-		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 		return
 	fi
 
@@ -1836,7 +1836,7 @@ Reboot() {
 			:
 	else
 		echo "Action '$action' canot be executed, because it seems to be not available."
-		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 		return
 	fi
 
@@ -1858,7 +1858,7 @@ confBackup() {
 				:
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 			return
 		fi
 
@@ -1876,7 +1876,7 @@ confBackup() {
 				:
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 			return
 		fi
 
@@ -1906,7 +1906,7 @@ sendSMS() {
 				:
 		else
 			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services anbd actions."
+			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
 			return
 		fi
 
