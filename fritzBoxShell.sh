@@ -380,6 +380,194 @@ WireguardVPNstate(){
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### -------------------------------- FUNCTION readout - TR-064 Protocol --------------------------------- ###
+### -------------- Function to get total number of 2.4 Ghz, 5 Ghz, ethernet or all clients -------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+# Function for SOAP requests
+soap_request() {
+    local location=$1
+    local service=$2
+    local action=$3
+    local body=$4
+    local FRITZBOX_URL="http://$BoxIP:49000"
+    local USERNAME=$BoxUSER
+    local PASSWORD=$BoxPW
+
+    curl -m 25 --anyauth -s -u "$USERNAME:$PASSWORD" \
+        -H 'Content-Type: text/xml; charset="utf-8"' \
+        -H "SOAPAction: \"$service#$action\"" \
+        -d "$body" \
+        "$FRITZBOX_URL$location"
+}
+
+get_ip_from_mac() {
+    local mac=$1
+    local show_ip=$2  # Parameter that indicates whether the IP address should be retrieved
+
+    # If the -withIP parameter is set, retrieve the IP address
+    if [ "$show_ip" == "-withIP" ]; then
+        local SOAP_BODY='<?xml version="1.0" encoding="utf-8"?>
+        <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
+                    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+            <s:Body>
+                <u:GetSpecificHostEntry xmlns:u="urn:dslforum-org:service:Hosts:1">
+                    <NewMACAddress>'$mac'</NewMACAddress>
+                </u:GetSpecificHostEntry>
+            </s:Body>
+        </s:Envelope>'
+
+        # Use curl to send the SOAP request (replace this with your actual method)
+        local response=$(soap_request "/upnp/control/hosts" "urn:dslforum-org:service:Hosts:1" "GetSpecificHostEntry" "$SOAP_BODY")
+        local ip=$(echo "$response" | xmlstarlet sel -t -v "//NewIPAddress" 2>/dev/null)
+
+        echo "$ip"
+    else
+        echo ""  # If -withIP is not set, leave the IP empty
+    fi
+}
+
+get_filtered_clients() {
+    local filter=$1
+    local show_ip=$2  # Parameter that indicates whether the IP address should be retrieved
+
+    # Retrieve the host list
+    local SOAP_BODY='<?xml version="1.0" encoding="utf-8"?>
+    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
+                s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+        <s:Body>
+            <u:GetMeshListPath xmlns:u="urn:dslforum-org:service:Hosts:1" />
+        </s:Body>
+    </s:Envelope>'
+
+    local mesh_list_xml=$(soap_request "/upnp/control/hosts" "urn:dslforum-org:service:Hosts:1" "X_AVM-DE_GetMeshListPath" "$SOAP_BODY")
+    local mesh_list_path=$(echo "$mesh_list_xml" | xmlstarlet sel -t -v "//NewX_AVM-DE_MeshListPath")
+
+    if [[ -z "$mesh_list_path" ]]; then
+        echo "Error: Could not retrieve mesh list."
+        return 1
+    fi
+
+    # Retrieve the Security Port
+    location="/upnp/control/deviceinfo"
+    uri="urn:dslforum-org:service:DeviceInfo:1"
+    action="GetSecurityPort"
+    securityPort=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewSecurityPort | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+    
+    # Retrieve the mesh list
+    local sid=$(echo "$mesh_list_path" | grep -o 'sid=[^&]*' | cut -d'=' -f2)
+
+    local mesh_url="https://$BoxIP:$securityPort/meshlist.lua?sid=$sid"
+
+    # echo "DEBUG: Retrieving the mesh list from: $mesh_url"
+
+    # Retrieve the mesh list
+    local mesh_list_json=$(curl -s -k -m 30 --anyauth -u "$BoxUSER:$BoxPW" "$mesh_url")
+
+    # Check if the response is HTML (e.g., an error page)
+    if echo "$mesh_list_json" | grep -iq "<html>"; then
+        echo "Error: Received HTML response (likely an authentication problem)."
+        return 1
+    fi
+
+    # Check if the response is valid JSON
+    if ! echo "$mesh_list_json" | jq empty 2>/dev/null; then
+        echo "Error: Retrieved JSON data is invalid."
+        echo "DEBUG: Raw data:"
+        echo "$mesh_list_json"
+        return 1
+    fi
+
+    # Clean the JSON data
+    mesh_list_json=$(echo "$mesh_list_json" | tr -d '\r' | sed 's/\\//g')
+
+    if [ -z "$mesh_list_json" ]; then
+        echo "Error: mesh_list_json is empty!"
+        return 1
+    fi
+
+    # Filtering the devices based on the specified filter
+    local clients=""
+    echo "DEBUG: Applying filter '$filter' to the mesh list..."
+
+	case "$filter" in
+		"2.4")
+			# Filter for 2.4 GHz (only WLAN devices)
+			clients=$(echo "$mesh_list_json" | jq -r '.nodes[] | select(.device_name != "fritz.repeater" and .device_name != "fritz.box") | select(.node_interfaces[] | .type == "WLAN" and .current_channel_info?.primary_freq < 3000000) | {mac: .node_interfaces[].mac_address, name: .device_name, type: "WLAN_2G", ip: .node_interfaces[].ip_address, status: (if (.node_interfaces[].node_links | length) > 0 then "ONLINE" else "OFFLINE" end)}')
+			;;
+		"5")
+			# Filter for 5 GHz (only WLAN devices)
+			clients=$(echo "$mesh_list_json" | jq -r '.nodes[] | select(.device_name != "fritz.repeater" and .device_name != "fritz.box") | select(.node_interfaces[] | .type == "WLAN" and .current_channel_info?.primary_freq >= 5000000) | {mac: .node_interfaces[].mac_address, name: .device_name, type: "WLAN_5G", ip: .node_interfaces[].ip_address, status: (if (.node_interfaces[].node_links | length) > 0 then "ONLINE" else "OFFLINE" end)}')
+			;;
+		"ETH")
+			# Filter for Ethernet (only LAN devices)
+			clients=$(echo "$mesh_list_json" | jq -r '.nodes[] | select(.device_name != "fritz.repeater" and .device_name != "fritz.box") | select(.node_interfaces[] | .type == "LAN") | {mac: .node_interfaces[].mac_address, name: .device_name, type: "ETH", ip: .node_interfaces[].ip_address, status: (if (.node_interfaces[].node_links | length) > 0 then "ONLINE" else "OFFLINE" end)}')
+			;;
+		"all")
+			# Clear clients variable
+			clients=""
+
+			# Filter for 2.4 GHz WLAN
+			clients+=$(echo "$mesh_list_json" | jq -r '.nodes[] | select(.device_name != "fritz.repeater" and .device_name != "fritz.box") | select(.node_interfaces[] | .type == "WLAN" and .current_channel_info?.primary_freq < 3000000) | {mac: .node_interfaces[].mac_address, name: .device_name, type: "WLAN_2G", ip: .node_interfaces[].ip_address, status: (if (.node_interfaces[].node_links | length) > 0 then "ONLINE" else "OFFLINE" end)}')
+			
+
+			# Filter for 5 GHz WLAN
+			clients+=$(echo "$mesh_list_json" | jq -r '.nodes[] | select(.device_name != "fritz.repeater" and .device_name != "fritz.box") | select(.node_interfaces[] | .type == "WLAN" and .current_channel_info?.primary_freq >= 5000000) | {mac: .node_interfaces[].mac_address, name: .device_name, type: "WLAN_5G", ip: .node_interfaces[].ip_address, status: (if (.node_interfaces[].node_links | length) > 0 then "ONLINE" else "OFFLINE" end)}')
+			
+
+			# Filter for Ethernet (LAN)
+			clients+=$(echo "$mesh_list_json" | jq -r '.nodes[] | select(.device_name != "fritz.repeater" and .device_name != "fritz.box") | select(.node_interfaces[] | .type == "LAN") | {mac: .node_interfaces[].mac_address, name: .device_name, type: "ETH", ip: .node_interfaces[].ip_address, status: (if (.node_interfaces[].node_links | length) > 0 then "ONLINE" else "OFFLINE" end)}')
+
+			;;
+		*)
+			echo "Invalid filter. Available options: 2.4, 5, ETH, all"
+			return 1
+			;;
+	esac
+
+    # Remove duplicate devices based on MAC address but display device names
+    unique_clients=$(echo "$clients" | jq -s 'map({mac, name, type, ip, status}) | unique_by(.mac)')
+
+    # echo "$unique_clients" > unique_clients_debug.json
+
+    # Loop over all clients and retrieve the IP only if -withIP is set
+    for i in $(echo "$unique_clients" | jq -r '. | keys_unsorted | .[]'); do
+        mac=$(echo "$unique_clients" | jq -r ".[$i].mac")  # Get MAC address
+        ip=$(get_ip_from_mac "$mac" "$show_ip")  # Retrieve IP only if -withIP is set
+
+        # Update the JSON with the IP address if it exists
+        if [ -n "$ip" ]; then
+            unique_clients=$(echo "$unique_clients" | jq ".[$i].ip = \"$ip\"")
+        fi
+    done
+
+	unique_clients=$(echo "$unique_clients" | jq 'sort_by(.type)')
+
+    # Count the filtered devices (only unique)
+    local num_clients=$(echo "$unique_clients" | jq length)
+
+    # Count the ONLINE and OFFLINE devices
+    local online_count=$(echo "$unique_clients" | jq '[.[] | select(.status == "ONLINE")] | length')
+    local offline_count=$(echo "$unique_clients" | jq '[.[] | select(.status == "OFFLINE")] | length')
+
+    # Output the total number and the online/offline count
+    echo 
+	echo "Found devices: $num_clients"
+    echo "ONLINE: $online_count | OFFLINE: $offline_count"
+    echo 
+
+    # Create the header line, matching the data
+    header="Type\tClient Name\tIP Address\tMAC Address\tStatus"
+
+    # Output the devices in a format suitable for `column` (with header)
+    (
+        echo -e "$header"
+        echo "$unique_clients" | jq -r '.[] | "\(.type)\t\(.name)\t\(.ip // "No IP")\t\(.mac)\t\(.status)"'
+    ) | column -t -s $'\t'
+}
+
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### ------------------------------ FUNCTION to readout misc from data.lua ------------------------------- ###
 ### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -1776,6 +1964,7 @@ DisplayArguments() {
 	echo "| WLAN            | 0 or 1 or STATE           | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi        |"
 	echo "| WLAN            | QRCODE                    | Show a qr code to connect to the 2,4 and 5 Ghz WiFi                         |"
 	echo "| WLAN            | CHANGECH and <channel>    | Change channel of the 2,4 and 5 Ghz WiFi to optional <channel>              |"
+	echo "| COUNT           | <option> optional -withIP | Counts devices for <option> (2.4 , 5, ETH, all) + lists optionally the IPs  |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| TAM             | <index> and GetInfo       | e.g. TAM 0 GetInfo (gives info about answering machine)                     |"
 	echo "| TAM             | <index> and ON or OFF     | e.g. TAM 0 ON (switches ON the answering machine)                           |"
@@ -1949,6 +2138,8 @@ else
         sendSMS "$option2" "$option3";
 	elif [ "$option1" = "WOL" ]; then
         WakeOnLAN "$option2";
+	elif [ "$option1" = "COUNT" ]; then
+		get_filtered_clients "$option2" "$option3";
 	else DisplayArguments
 	fi
 fi
