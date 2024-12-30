@@ -110,7 +110,7 @@ After the successful installation and setup following functions should be availa
 | WLAN | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4Ghz and 5 Ghz WiFi |
 | WLAN | QRCODE | Show a qr code to connect to the 2,4 and 5 Ghz and Guest WiFi |
 | WLAN | CHANGECH and \<channel> | Change channel of the 2,4 and 5 Ghz WiFi to optional \<channel> |
-| COUNT | <option> optional -withIP | Counts devices for <option> (2.4 , 5, ETH, all) + lists optionally the IPs |
+| COUNT | \<option> optional -withIP | Counts devices for \<option> (2.4 , 5, ETH, all) + lists optionally the IPs |
 | TAM | \<index> and GetInfo | e.g. TAM 0 GetInfo (gives info about answering machine) |
 | TAM | \<index> and ON or OFF | e.g. TAM 0 ON (switches ON the answering machine) |
 | TAM | \<index> and GetMsgs | e.g. TAM 0 GetMsgs (gives XML formatted list of messages) |
