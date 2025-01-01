@@ -531,15 +531,32 @@ get_filtered_clients() {
     # echo "$unique_clients" > unique_clients_debug.json
 
     # Loop over all clients and retrieve the IP only if -withIP is set
-    for i in $(echo "$unique_clients" | jq -r '. | keys_unsorted | .[]'); do
-        mac=$(echo "$unique_clients" | jq -r ".[$i].mac")  # Get MAC address
-        ip=$(get_ip_from_mac "$mac" "$show_ip")  # Retrieve IP only if -withIP is set
+	#
+	# OLD CODE which was making toubles on Cygwin or windows based shell envorinments
+	#
+    # for i in $(echo "$unique_clients" | jq -r '. | keys_unsorted | .[]'); do
+    #     mac=$(echo "$unique_clients" | jq -r ".[$i].mac")  # Get MAC address
+    #     ip=$(get_ip_from_mac "$mac" "$show_ip")  # Retrieve IP only if -withIP is set
 
-        # Update the JSON with the IP address if it exists
-        if [ -n "$ip" ]; then
-            unique_clients=$(echo "$unique_clients" | jq ".[$i].ip = \"$ip\"")
-        fi
-    done
+    #     # Update the JSON with the IP address if it exists
+    #     if [ -n "$ip" ]; then
+    #         unique_clients=$(echo "$unique_clients" | jq ".[$i].ip = \"$ip\"")
+    #     fi
+    # done
+
+	# Loop over all clients and retrieve the IP only if -withIP is set
+	for i in $(echo "$unique_clients" | jq -r '. | keys_unsorted | .[]'); do
+		# Hole die MAC-Adresse sicher mit --argjson
+		mac=$(echo "$unique_clients" | jq -r --argjson i "$i" '.[$i].mac')
+		
+		# Get the IP-Address based on the MAC-Address
+		ip=$(get_ip_from_mac "$mac" "$show_ip")
+
+		# Update the JSON with the IP address if it exists with --arg
+		if [ -n "$ip" ]; then
+			unique_clients=$(echo "$unique_clients" | jq --argjson i "$i" --arg ip "$ip" '.[$i].ip = $ip')
+		fi
+	done
 
 	unique_clients=$(echo "$unique_clients" | jq 'sort_by(.type)')
 
