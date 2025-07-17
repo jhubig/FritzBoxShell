@@ -1263,6 +1263,47 @@ getWLANGUESTNum() {
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------- FUNCTION get_channel_width_for_wlan - Enhancement for Issue #54 -------------- ###
+### ----------------------------- Gets WiFi channel width via AHA interface ----------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+get_channel_width_for_wlan() {
+    local wlan_config=$1  # 1, 2, or 3
+    
+    # Get SID for AHA interface
+    local temp_sid=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000/upnp/control/deviceconfig" \
+        -H 'Content-Type: text/xml; charset="utf-8"' \
+        -H "SoapAction:urn:dslforum-org:service:DeviceConfig:1#X_AVM-DE_CreateUrlSID" \
+        -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:X_AVM-DE_CreateUrlSID xmlns:u='urn:dslforum-org:service:DeviceConfig:1'></u:X_AVM-DE_CreateUrlSID></s:Body></s:Envelope>" | \
+        grep "NewX_AVM-DE_UrlSID" | awk -F">" '{print $2}' | awk -F"<" '{print $1}' | awk -F"=" '{print $2}')
+    
+    if [ -n "$temp_sid" ]; then
+        # Get channel data from AHA interface
+        local chan_data=$(wget -q -O - --post-data "xhr=1&sid=$temp_sid&page=chan&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null)
+        
+        if [ -n "$chan_data" ] && command -v jq &> /dev/null; then
+            # Extract channel width for the specific WLAN configuration
+            local channel_width=$(echo "$chan_data" | jq -r ".data.channelInfo[$((wlan_config-1))].channelwidth // \"N/A\"" 2>/dev/null)
+            
+            if [ "$channel_width" != "N/A" ] && [ "$channel_width" != "null" ] && [ -n "$channel_width" ]; then
+                echo "NewChannelWidth $channel_width"
+                echo "NewChannelWidthMHz $channel_width"
+            else
+                # Fallback: try to get any channel width from the data
+                local fallback_width=$(echo "$chan_data" | jq -r '.data | .. | .channelwidth? // empty' 2>/dev/null | head -1)
+                if [ -n "$fallback_width" ]; then
+                    echo "NewChannelWidth $fallback_width"
+                    echo "NewChannelWidthMHz $fallback_width"
+                fi
+            fi
+        fi
+        
+        # Logout SID
+        wget -O /dev/null "http://$BoxIP/home/home.lua?sid=$temp_sid&logout=1" &>/dev/null 2>&1
+    fi
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### ----------------------- FUNCTION WLANstatistics for 2.4 Ghz - TR-064 Protocol ----------------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
 
@@ -1280,6 +1321,10 @@ WLANstatistics() {
 		action='GetInfo'
 
 		readout
+		
+		# Get channel width (Enhancement for Issue #54)
+		get_channel_width_for_wlan 1
+		
 		echo "NewGHz 2.4"
 }
 
@@ -1301,6 +1346,10 @@ WLAN5statistics() {
 		action='GetInfo'
 
 		readout
+		
+		# Get channel width (Enhancement for Issue #54)
+		get_channel_width_for_wlan 2
+		
 		echo "NewGHz 5"
 }
 
