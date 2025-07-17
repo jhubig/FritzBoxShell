@@ -161,7 +161,7 @@ getSID(){
   SID=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep "NewX_AVM-DE_UrlSID" | awk -F">" '{print $2}' | awk -F"<" '{print $1}' | awk -F"=" '{print $2}')
   
   if [ -z "$SID" ]; then
-    echo "Von SID could be retrieved. Please check your password and username eitehr by parameter or defined in the fritzBoxShellConfig.sh."
+    echo "No SID could be retrieved. Please check your password and username either by parameter or defined in the fritzBoxShellConfig.sh."
   fi
 
 }
@@ -581,6 +581,470 @@ get_filtered_clients() {
         echo -e "$header"
         echo "$unique_clients" | jq -r '.[] | "\(.type)\t\(.name)\t\(.ip // "No IP")\t\(.mac)\t\(.status)"'
     ) | column -t -s $'\t'
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------- FUNCTION ListAllDevices - Enhanced Device Information ----------------------- ###
+### ----------------------------- Using TR-064 Protocol for comprehensive data ------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+ListAllDevices() {
+    echo "Retrieving all known devices from Fritz!Box (optimized for speed)..."
+    echo ""
+    
+    # Skip mesh API for now due to parsing issues - use reliable TR-064 method
+    echo "Using parallel TR-064 approach for reliable device names..."
+    
+    # TR-064 service information
+    SERVICE="urn:dslforum-org:service:Hosts:1"
+    CONTROL_URL="/upnp/control/hosts"
+    
+    # Check if the service is available
+    if ! verify_action_availability "$CONTROL_URL" "$SERVICE" "GetHostNumberOfEntries"; then
+        echo "Error: Host service not available on this Fritz!Box"
+        return 1
+    fi
+    
+    # Get total number of known devices
+    total_hosts=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
+        -H 'Content-Type: text/xml; charset="utf-8"' \
+        -H "SoapAction:$SERVICE#GetHostNumberOfEntries" \
+        -d "<?xml version='1.0' encoding='utf-8'?>
+        <s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
+        <s:Body>
+            <u:GetHostNumberOfEntries xmlns:u='$SERVICE'></u:GetHostNumberOfEntries>
+        </s:Body>
+        </s:Envelope>" | grep NewHostNumberOfEntries | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+    
+    if [[ ! "$total_hosts" =~ ^[0-9]+$ ]] || [ "$total_hosts" -eq 0 ]; then
+        echo "No devices found or error retrieving device count"
+        return 1
+    fi
+    
+    echo "Found $total_hosts known devices (processing in parallel for speed)..."
+    echo ""
+    
+    # Create temporary directory for parallel processing
+    temp_dir="/tmp/fritzbox_devices_$$"
+    mkdir -p "$temp_dir"
+    
+    # Get SID for profile information (once, not per device)
+    getSID 2>/dev/null
+    
+    # Get device data once if SID is available
+    device_data=""
+    if [ -n "$SID" ]; then
+        device_data=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=netDev&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null)
+    fi
+    
+    # Function to process a single device (will be run in parallel)
+    process_device() {
+        local i=$1
+        local temp_dir=$2
+        local device_data=$3
+        
+        # Get detailed information for this device
+        device_info=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
+            -H "Content-Type: text/xml; charset=\"utf-8\"" \
+            -H "SoapAction:$SERVICE#GetGenericHostEntry" \
+            -d "<?xml version=\"1.0\" encoding=\"utf-8\"?>
+            <s:Envelope s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">
+                <s:Body>
+                    <u:GetGenericHostEntry xmlns:u=\"$SERVICE\"><NewIndex>$i</NewIndex></u:GetGenericHostEntry>
+                </s:Body>
+            </s:Envelope>")
+        
+        # Extract individual fields
+        device_name=$(echo "$device_info" | grep NewHostName | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+        mac_address=$(echo "$device_info" | grep NewMACAddress | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+        ip_address=$(echo "$device_info" | grep NewIPAddress | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+        interface_type=$(echo "$device_info" | grep NewInterfaceType | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+        active=$(echo "$device_info" | grep NewActive | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+        
+        # Try to get device ID and profile from the pre-fetched data
+        device_id="N/A"
+        profile_id="N/A"
+        
+        if [ -n "$device_data" ] && [ -n "$mac_address" ] && command -v jq &> /dev/null; then
+            device_entry=$(echo "$device_data" | jq -r ".data.active[]? | select(.mac == \"$mac_address\") | {id: .id, profile: .profile}" 2>/dev/null)
+            if [ -n "$device_entry" ] && [ "$device_entry" != "null" ]; then
+                device_id=$(echo "$device_entry" | jq -r '.id // "N/A"' 2>/dev/null)
+                profile_id=$(echo "$device_entry" | jq -r '.profile // "N/A"' 2>/dev/null)
+            fi
+        fi
+        
+        # Clean up empty values
+        [ -z "$device_name" ] && device_name="Unknown"
+        [ -z "$mac_address" ] && mac_address="N/A"
+        [ -z "$ip_address" ] && ip_address="N/A"
+        [ -z "$interface_type" ] && interface_type="N/A"
+        [ -z "$active" ] && active="N/A"
+        
+        # Convert active status to readable format
+        case "$active" in
+            "1") active="Yes" ;;
+            "0") active="No" ;;
+            *) active="N/A" ;;
+        esac
+        
+        # Truncate long names for better formatting
+        if [ ${#device_name} -gt 20 ]; then
+            device_name="${device_name:0:17}..."
+        fi
+        
+        # Write result to temporary file (with device index for sorting)
+        printf "%d|%-20s|%-17s|%-15s|%-10s|%-8s|%-12s|%-10s\n" \
+            "$i" "$device_name" "$mac_address" "$ip_address" "$interface_type" "$active" "$device_id" "$profile_id" \
+            > "$temp_dir/device_$i.txt"
+    }
+    
+    # Export function and variables for parallel execution
+    export -f process_device
+    export BoxUSER BoxPW BoxIP CONTROL_URL SERVICE
+    
+    # Create header
+    printf "%-3s %-20s %-17s %-15s %-10s %-8s %-12s %-10s\n" \
+        "ID" "Device Name" "MAC Address" "IP Address" "Interface" "Active" "LAN-Dev-ID" "Profile"
+    echo "----------------------------------------------------------------------------------------------------"
+    
+    # Process devices in parallel (limit concurrent jobs to avoid overwhelming the Fritz!Box)
+    max_parallel=10
+    
+    # Launch parallel jobs in batches
+    for ((i=0; i<total_hosts; i++)); do
+        # Launch background job
+        process_device "$i" "$temp_dir" "$device_data" &
+        
+        # Limit number of parallel jobs
+        if (( (i + 1) % max_parallel == 0 )); then
+            wait  # Wait for current batch to complete
+        fi
+    done
+    
+    # Wait for any remaining jobs
+    wait
+    
+    # Collect and display results in order
+    for ((i=0; i<total_hosts; i++)); do
+        if [ -f "$temp_dir/device_$i.txt" ]; then
+            # Read the result and format it properly with consistent ID alignment
+            result=$(cat "$temp_dir/device_$i.txt")
+            # Parse the fields and reformat with proper alignment
+            IFS='|' read -r id name mac ip interface active dev_id profile <<< "$result"
+            printf "%-3s %-20s %-17s %-15s %-10s %-8s %-12s %-10s\n" \
+                "$id" "$name" "$mac" "$ip" "$interface" "$active" "$dev_id" "$profile"
+        fi
+    done
+    
+    echo ""
+    echo "Total devices: $total_hosts"
+    echo "Processing completed using parallel execution!"
+    
+    # Cleanup
+    rm -rf "$temp_dir"
+    
+    # Logout the SID if it was used
+    if [ -n "$SID" ]; then
+        wget -O /dev/null "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+    fi
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------- FUNCTION ListAllDevicesUltraFast - Using Mesh API -------------------------- ###
+### ----------------------------- Leverages existing optimized mesh functionality ---------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+ListAllDevicesUltraFast() {
+    # Use the existing optimized mesh API which gets all devices in one call
+    
+    # Get SID for profile information
+    getSID 2>/dev/null
+    
+    # Get all devices using the mesh API (much faster)
+    SERVICE="urn:dslforum-org:service:Hosts:1"
+    CONTROL_URL="/upnp/control/hosts"
+    
+    # Get mesh list path
+    SOAP_BODY='<?xml version="1.0" encoding="utf-8"?>
+    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
+                s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+        <s:Body>
+            <u:GetMeshListPath xmlns:u="urn:dslforum-org:service:Hosts:1" />
+        </s:Body>
+    </s:Envelope>'
+
+    mesh_list_xml=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
+        -H 'Content-Type: text/xml; charset="utf-8"' \
+        -H "SoapAction:urn:dslforum-org:service:Hosts:1#X_AVM-DE_GetMeshListPath" \
+        -d "$SOAP_BODY" 2>/dev/null)
+    
+    mesh_list_path=$(echo "$mesh_list_xml" | xmlstarlet sel -t -v "//NewX_AVM-DE_MeshListPath" 2>/dev/null)
+
+    if [[ -z "$mesh_list_path" ]]; then
+        return 1  # Mesh API not available
+    fi
+
+    # Get security port
+    location="/upnp/control/deviceinfo"
+    uri="urn:dslforum-org:service:DeviceInfo:1"
+    action="GetSecurityPort"
+    securityPort=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" \
+        -H 'Content-Type: text/xml; charset="utf-8"' \
+        -H "SoapAction:$uri#$action" \
+        -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'></u:$action></s:Body></s:Envelope>" | grep NewSecurityPort | awk -F">" '{print $2}' | awk -F"<" '{print $1}' 2>/dev/null)
+    
+    # Get mesh list
+    sid=$(echo "$mesh_list_path" | grep -o 'sid=[^&]*' | cut -d'=' -f2)
+    mesh_url="https://$BoxIP:$securityPort/meshlist.lua?sid=$sid"
+    
+    mesh_list_json=$(curl -s -k -m 30 --anyauth -u "$BoxUSER:$BoxPW" "$mesh_url" 2>/dev/null)
+    
+    if ! echo "$mesh_list_json" | jq empty 2>/dev/null; then
+        return 1  # Mesh data not available
+    fi
+    
+    # Get device profile data if SID available
+    device_profile_data=""
+    if [ -n "$SID" ]; then
+        device_profile_data=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=netDev&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null)
+    fi
+    
+    echo "Found devices using ultra-fast mesh API:"
+    echo ""
+    
+    # Create header
+    printf "%-3s %-20s %-17s %-15s %-10s %-8s %-12s %-10s\n" \
+        "ID" "Device Name" "MAC Address" "IP Address" "Interface" "Active" "LAN-Dev-ID" "Profile"
+    echo "----------------------------------------------------------------------------------------------------"
+    
+    # Process all devices from mesh data
+    device_count=0
+    echo "$mesh_list_json" | jq -r '.nodes[] | select(.device_name != "fritz.repeater" and .device_name != "fritz.box") | .node_interfaces[] | "\(.mac_address)|\(.ip_address // "N/A")|\(.type)|\(if (.node_links | length) > 0 then "Yes" else "No" end)|\(.device_name // "Unknown")"' 2>/dev/null | \
+    while IFS='|' read -r mac_address ip_address interface_type active device_name; do
+        
+        # Get device ID and profile from profile data if available
+        device_id="N/A"
+        profile_id="N/A"
+        
+        if [ -n "$device_profile_data" ] && [ -n "$mac_address" ] && command -v jq &> /dev/null; then
+            device_entry=$(echo "$device_profile_data" | jq -r ".data.active[]? | select(.mac == \"$mac_address\") | {id: .id, profile: .profile}" 2>/dev/null)
+            if [ -n "$device_entry" ] && [ "$device_entry" != "null" ]; then
+                device_id=$(echo "$device_entry" | jq -r '.id // "N/A"' 2>/dev/null)
+                profile_id=$(echo "$device_entry" | jq -r '.profile // "N/A"' 2>/dev/null)
+            fi
+        fi
+        
+        # Clean up values
+        [ -z "$device_name" ] && device_name="Unknown"
+        [ -z "$mac_address" ] && mac_address="N/A"
+        [ -z "$ip_address" ] && ip_address="N/A"
+        [ -z "$interface_type" ] && interface_type="N/A"
+        [ -z "$active" ] && active="N/A"
+        
+        # Map interface types
+        case "$interface_type" in
+            "WLAN") interface_type="802.11" ;;
+            "LAN") interface_type="Ethernet" ;;
+        esac
+        
+        # Truncate long names
+        if [ ${#device_name} -gt 20 ]; then
+            device_name="${device_name:0:17}..."
+        fi
+        
+        # Print device information
+        printf "%-3s %-20s %-17s %-15s %-10s %-8s %-12s %-10s\n" \
+            "$device_count" "$device_name" "$mac_address" "$ip_address" "$interface_type" "$active" "$device_id" "$profile_id"
+        
+        device_count=$((device_count + 1))
+    done
+    
+    echo ""
+    echo "Total devices: $device_count"
+    echo "Ultra-fast processing completed using mesh API!"
+    
+    # Logout the SID if it was used
+    if [ -n "$SID" ]; then
+        wget -O /dev/null "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+    fi
+    
+    return 0
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------- FUNCTION ListProfiles - List Available Filter Profiles -------------------- ###
+### ----------------------------- Using AHA-HTTP-Interface for profile data ---------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+ListProfiles() {
+    echo "Retrieving available filter profiles from Fritz!Box..."
+    echo ""
+    
+    # Get a valid SID for AHA interface
+    getSID
+    
+    if [ -z "$SID" ]; then
+        echo "Error: Could not obtain session ID. Please check credentials."
+        return 1
+    fi
+    
+    # Get profile information from data.lua
+    profile_data=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=kidPro&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null)
+    
+    if [ $? -ne 0 ] || [ -z "$profile_data" ]; then
+        echo "Trying alternative method to retrieve profile data..."
+        
+        # Alternative: Try to get profiles from device management page
+        profile_data=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=netDev&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null)
+    fi
+    
+    if [ $? -ne 0 ] || [ -z "$profile_data" ]; then
+        echo "Error: Could not retrieve profile information from Fritz!Box"
+        echo "This might be due to:"
+        echo "  - Insufficient user permissions"
+        echo "  - Parental controls not configured"
+        echo "  - Fritz!Box firmware version compatibility"
+        
+        # Logout the SID
+        wget -O /dev/null "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+        return 1
+    fi
+    
+    # Check if jq is available for JSON parsing
+    if ! command -v jq &> /dev/null; then
+        echo "Warning: jq is not installed - showing basic profile information"
+        echo ""
+        echo "Available Filter Profiles:"
+        echo "=========================="
+        echo "Default profiles that are typically available:"
+        echo "  ID: 0 or 1 - Standard (unrestricted access)"
+        echo "  ID: 2      - Blocked (no internet access)"
+        echo "  ID: 3+     - Custom profiles (if configured)"
+        echo ""
+        echo "To see detailed profiles, install jq: sudo apt-get install jq"
+    else
+        # Parse profiles from JSON data
+        echo "Available Filter Profiles:"
+        echo "=========================="
+        
+        # Try to extract profiles from the data
+        profiles=$(echo "$profile_data" | jq -r '.data.profiles[]? | "\(.id)|\(.name)|\(.description // "No description")"' 2>/dev/null)
+        
+        if [ -z "$profiles" ]; then
+            # Try alternative JSON structure
+            profiles=$(echo "$profile_data" | jq -r '.data.kidProfiles[]? | "\(.id)|\(.name)|\(.desc // "No description")"' 2>/dev/null)
+        fi
+        
+        if [ -z "$profiles" ]; then
+            # Try yet another structure for newer firmware
+            profiles=$(echo "$profile_data" | jq -r 'try (.data[] | select(.profiles) | .profiles[] | "\(.id)|\(.name)|\(.description // "No description")")' 2>/dev/null)
+        fi
+        
+        if [ -n "$profiles" ]; then
+            printf "%-5s %-25s %-50s\n" "ID" "Profile Name" "Description"
+            echo "--------------------------------------------------------------------------------"
+            
+            echo "$profiles" | while IFS='|' read -r id name desc; do
+                [ -z "$name" ] && name="Unnamed Profile"
+                [ -z "$desc" ] && desc="No description"
+                
+                # Truncate long descriptions
+                if [ ${#desc} -gt 50 ]; then
+                    desc="${desc:0:47}..."
+                fi
+                
+                printf "%-5s %-25s %-50s\n" "$id" "$name" "$desc"
+            done
+        else
+            echo "No custom profiles found. Default profiles available:"
+            echo ""
+            printf "%-5s %-25s %-50s\n" "ID" "Profile Name" "Description"
+            echo "--------------------------------------------------------------------------------"
+            printf "%-5s %-25s %-50s\n" "0/1" "Standard" "Unrestricted internet access"
+            printf "%-5s %-25s %-50s\n" "2" "Blocked" "No internet access"
+            echo ""
+            echo "Configure custom profiles in Fritz!Box web interface under:"
+            echo "Internet > Filters > Parental Controls"
+        fi
+    fi
+    
+    echo ""
+    echo "Usage with SETPROFILE:"
+    echo "  ./fritzBoxShell.sh SETPROFILE <device_name> <device_id> <profile_id>"
+    echo "  Example: ./fritzBoxShell.sh SETPROFILE \"Johns Phone\" \"12345\" \"2\""
+    echo ""
+    echo "To get device IDs, use: ./fritzBoxShell.sh LISTDEVICES"
+    
+    # Logout the SID
+    wget -O /dev/null "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------- FUNCTION ListDevicesWithProfiles - Combined Information ------------------- ###
+### ----------------------------- Shows devices with their current profile assignments ----------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+ListDevicesWithProfiles() {
+    echo "Retrieving devices with profile assignments..."
+    echo ""
+    
+    # Get a valid SID
+    getSID
+    
+    if [ -z "$SID" ]; then
+        echo "Error: Could not obtain session ID for profile information"
+        echo "Falling back to basic device listing..."
+        ListAllDevices
+        return
+    fi
+    
+    # Get device and profile data
+    device_data=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=netDev&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null)
+    
+    if [ $? -ne 0 ] || [ -z "$device_data" ]; then
+        echo "Warning: Could not retrieve profile assignments"
+        echo "Showing basic device information..."
+        ListAllDevices
+        return
+    fi
+    
+    echo "Devices with Profile Assignments:"
+    echo "================================="
+    printf "%-20s %-17s %-15s %-12s %-15s %-10s\n" \
+        "Device Name" "MAC Address" "IP Address" "Device ID" "Profile Name" "Status"
+    echo "--------------------------------------------------------------------------------------------"
+    
+    # Parse device data with jq if available
+    if command -v jq &> /dev/null; then
+        device_count=0
+        echo "$device_data" | jq -r '.data.active[]? | "\(.name // "Unknown")|\(.mac)|\(.ip // "N/A")|\(.id // "N/A")|\(.profile_name // "Default")|\(.state // "Unknown")"' 2>/dev/null | \
+        while IFS='|' read -r name mac ip dev_id profile status; do
+            # Truncate long names
+            if [ ${#name} -gt 20 ]; then
+                name="${name:0:17}..."
+            fi
+            if [ ${#profile} -gt 15 ]; then
+                profile="${profile:0:12}..."
+            fi
+            
+            printf "%-20s %-17s %-15s %-12s %-15s %-10s\n" \
+                "$name" "$mac" "$ip" "$dev_id" "$profile" "$status"
+            device_count=$((device_count + 1))
+        done
+        
+        if [ $device_count -eq 0 ]; then
+            echo "No active devices found with profile information."
+            echo "This might indicate that parental controls are not configured."
+        fi
+    else
+        echo "jq not available - showing basic device list instead"
+        echo "Install jq for enhanced profile information: sudo apt-get install jq"
+        echo ""
+        ListAllDevices
+    fi
+    
+    # Logout the SID
+    wget -O /dev/null "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
 }
 
 
@@ -2022,6 +2486,9 @@ DisplayArguments() {
 	echo "| KIDS            | userid and true|false     | Block / unblock internet access for certain machine                         |"
 	echo "| SETPROFILE      | dev devname profile       | Put a device (name and id) into a profile                                   |"
 	echo "| WOL             | <MAC-ADDRESS>             | Send a Wake-On-LAN request to a ethernet device                             |"
+	echo "| LISTDEVICES     |                           | List all known devices with name, MAC, IP, device ID and profile info       |"
+	echo "| LISTPROFILES    |                           | List available filter profiles for use with SETPROFILE                      |"
+	echo "| DEVICEPROFILES  |                           | Show devices with their current profile assignments                         |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| VERSION         |                           | Version of the fritzBoxShell.sh                                             |"
 	echo "| ACTIONS         |                           | Loop through all services and actions and make SOAP CALL                    |"
@@ -2054,6 +2521,12 @@ then
                 script_version
 		elif [ "$option1" = "ACTIONS" ]; then
 			TR064_actions
+		elif [ "$option1" = "LISTDEVICES" ]; then
+			ListAllDevices
+		elif [ "$option1" = "LISTPROFILES" ]; then
+			ListProfiles
+		elif [ "$option1" = "DEVICEPROFILES" ]; then
+			ListDevicesWithProfiles
         else DisplayArguments
         fi
 else
