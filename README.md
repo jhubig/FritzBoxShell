@@ -97,11 +97,11 @@ After the successful installation and setup following functions should be availa
 | --- | --- | --- |
 | DEVICEINFO | STATE | Show information about your Fritz!Box like ModelName, SN, etc. |
 | WLAN_2G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 2,4 Ghz WiFi |
-| WLAN_2G  | STATISTICS | Statistics for the 2,4 Ghz WiFi easily digestible by telegraf |
+| WLAN_2G  | STATISTICS | Statistics for the 2,4 Ghz WiFi with channel width info (20/40/80/160/320 MHz) |
 | WLAN_2G | QRCODE | Show a qr code to connect to the 2,4 Ghz WiFi |
 | WLAN_2G | CHANGECH and \<channel> | Change channel of the 2,4 Ghz WiFi to optional \<channel> (random if absent) |
 | WLAN_5G | 0 or 1 or STATE | Switching ON, OFF or checking the state of the 5 Ghz WiFi |
-| WLAN_5G  | STATISTICS | Statistics for the 5 Ghz WiFi easily digestible by telegraf |
+| WLAN_5G  | STATISTICS | Statistics for the 5 Ghz WiFi with channel width info (20/40/80/160/320 MHz) |
 | WLAN_5G | QRCODE | Show a qr code to connect to the 5 Ghz WiFi |
 | WLAN_5G | CHANGECH and \<channel> | Change channel of the 5 Ghz WiFi to optional \<channel> (random if absent) |
 | WLAN_GUEST | 0 or 1 or STATE | Switching ON, OFF or checking the state of the Guest WiFi |
@@ -147,6 +147,41 @@ After the successful installation and setup following functions should be availa
 | DEVICEPROFILES | | Show devices with their current profile assignments |
 | VERSION | \<N/A> | Version of the fritzBoxShell.sh |
 | ACTIONS | \<N/A> | Loop through all services and actions and make SOAP CALL|
+
+## WiFi Channel Width Support
+
+The script now includes **WiFi channel width information** in WLAN statistics, supporting modern WiFi standards including **WiFi 6 (802.11ax)** and **WiFi 7 (802.11be)** with channel widths up to **320 MHz**.
+
+### Channel Width Features
+
+| Command | Enhanced Output | Supported Widths |
+|---------|----------------|------------------|
+| `WLAN_2G STATISTICS` | Includes channel width for 2.4 GHz | 20, 40, 80, 160, 320 MHz |
+| `WLAN_5G STATISTICS` | Includes channel width for 5 GHz | 20, 40, 80, 160, 320 MHz |
+| `WLAN_5G_CH2 STATISTICS` | Includes channel width for 5 GHz (2nd channel) | 20, 40, 80, 160, 320 MHz |
+
+### Sample Output with Channel Width
+
+```bash
+# Enhanced WLAN statistics now include channel width
+./fritzBoxShell.sh WLAN_5G STATISTICS
+
+# Example output:
+NewTotalPacketsSent 2310897349
+NewTotalPacketsReceived 3406343562
+NewTotalAssociations 5
+NewChannel 40
+NewChannelWidth 320          # NEW: Channel width in MHz
+NewChannelWidthMHz 320       # NEW: Explicit MHz unit
+NewGHz 5
+```
+
+### WiFi Standards Supported
+
+- **WiFi 4 (802.11n)**: Up to 40 MHz channel width
+- **WiFi 5 (802.11ac)**: Up to 160 MHz channel width  
+- **WiFi 6 (802.11ax)**: Up to 160 MHz channel width
+- **WiFi 7 (802.11be)**: Up to 320 MHz channel width
 
 ## Device Management and Profile Features
 
