@@ -142,8 +142,67 @@ After the successful installation and setup following functions should be availa
 | BACKUP | <password_for_backup> | Parameter <password> to define a password for your conf file |
 | KIDS | userid and true|false | Block / unblock internet access for certain machine |
 | SETPROFILE | dev devname profile | Put a device (name and id) into a profile |
+| LISTDEVICES | | List all known devices with name, MAC, IP, device ID and profile info |
+| LISTPROFILES | | List available filter profiles for use with SETPROFILE |
+| DEVICEPROFILES | | Show devices with their current profile assignments |
 | VERSION | \<N/A> | Version of the fritzBoxShell.sh |
 | ACTIONS | \<N/A> | Loop through all services and actions and make SOAP CALL|
+
+## Device Management and Profile Features
+
+The script includes enhanced device management capabilities for comprehensive network device discovery and parental control profile management.
+
+### Device Listing Commands
+
+| Command | Description | Example Output |
+|---------|-------------|----------------|
+| `LISTDEVICES` | Lists all known devices with comprehensive information | Shows device ID, name, MAC, IP, interface type, status, and profile |
+| `LISTPROFILES` | Lists available filter profiles for parental controls | Shows profile ID, name, and description for use with SETPROFILE |
+| `DEVICEPROFILES` | Shows devices with their current profile assignments | Combined view of devices and their assigned profiles |
+
+### Usage Examples
+
+```bash
+# List all devices with detailed information
+./fritzBoxShell.sh LISTDEVICES
+
+# List available profiles for parental controls
+./fritzBoxShell.sh LISTPROFILES
+
+# Show devices with their current profile assignments
+./fritzBoxShell.sh DEVICEPROFILES
+
+# Use device and profile information with SETPROFILE
+./fritzBoxShell.sh SETPROFILE "iPhone-15-Pro" "12345" "3"
+```
+
+### Sample Output
+
+**LISTDEVICES:**
+```
+ID  Device Name          MAC Address       IP Address      Interface  Active   LAN-Dev-ID   Profile
+----------------------------------------------------------------------------------------------------
+0   iPhone-15-Pro        AA:BB:CC:DD:EE:01 192.168.1.100   802.11     Yes      12345        Standard
+1   MacMiniM2Pro         AA:BB:CC:DD:EE:02 192.168.1.101   Ethernet   Yes      12346        Unrestricted
+2   Smart-TV             AA:BB:CC:DD:EE:03 192.168.1.102   Ethernet   Yes      12347        Kids-Safe
+```
+
+**LISTPROFILES:**
+```
+ID    Profile Name             Description
+--------------------------------------------------------------------------------
+0     Standard                 Unrestricted internet access
+2     Blocked                  No internet access
+3     Kids-Safe                Filtered content for children
+4     Gaming                   Optimized for gaming with time restrictions
+```
+
+### Performance Optimization
+
+The device listing commands use parallel processing for optimal performance:
+- **Fast execution**: Processes multiple devices simultaneously
+- **Reliable data**: Uses proven TR-064 protocol for accurate device information
+- **Comprehensive coverage**: Shows all known devices, including inactive ones
 
 ### Notes:
 
