@@ -642,6 +642,7 @@ ListAllDevices() {
         local i=$1
         local temp_dir=$2
         local device_data=$3
+        local sid=$4
         
         # Get detailed information for this device
         device_info=$(curl -s -k -m 5 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$CONTROL_URL" \
@@ -666,10 +667,23 @@ ListAllDevices() {
         profile_id="N/A"
         
         if [ -n "$device_data" ] && [ -n "$mac_address" ] && command -v jq &> /dev/null; then
-            device_entry=$(echo "$device_data" | jq -r ".data.active[]? | select(.mac == \"$mac_address\") | {id: .id, profile: .profile}" 2>/dev/null)
-            if [ -n "$device_entry" ] && [ "$device_entry" != "null" ]; then
-                device_id=$(echo "$device_entry" | jq -r '.id // "N/A"' 2>/dev/null)
-                profile_id=$(echo "$device_entry" | jq -r '.profile // "N/A"' 2>/dev/null)
+            # Get UID from netDev data
+            device_uid=$(echo "$device_data" | jq -r ".data.active[]? | select(.mac == \"$mac_address\") | .UID" 2>/dev/null)
+            if [ -n "$device_uid" ] && [ "$device_uid" != "null" ]; then
+                device_id="$device_uid"
+                
+                # Get profile information with optimized approach (only for active devices to speed up)
+                if [ -n "$sid" ] && [ "$active" = "1" ]; then
+                    # Use method with reasonable timeout for all devices
+                    device_profile_data=$(wget -q -O - --post-data "xhr=1&sid=$sid&page=edit_device&dev=$device_uid" "http://$BoxIP/data.lua" 2>/dev/null)
+                    if [ -n "$device_profile_data" ]; then
+                        profile_selected=$(echo "$device_profile_data" | jq -r '.data.vars.dev.netAccess.kisi.profiles.selected // ""' 2>/dev/null)
+                        if [ -n "$profile_selected" ] && [ "$profile_selected" != "" ] && [ "$profile_selected" != "null" ]; then
+                            # Extract profile ID from filtprofXXXX format
+                            profile_id=$(echo "$profile_selected" | sed 's/filtprof//')
+                        fi
+                    fi
+                fi
             fi
         fi
         
@@ -692,28 +706,35 @@ ListAllDevices() {
             device_name="${device_name:0:17}..."
         fi
         
+        # Convert profile ID to readable name
+        if [ "$profile_id" != "N/A" ] && [ -n "$profile_id" ]; then
+            profile_name=$(getProfileName "$profile_id")
+        else
+            profile_name="N/A"
+        fi
+        
         # Write result to temporary file (with device index for sorting)
-        printf "%d|%-20s|%-17s|%-15s|%-10s|%-8s|%-12s|%-10s\n" \
-            "$i" "$device_name" "$mac_address" "$ip_address" "$interface_type" "$active" "$device_id" "$profile_id" \
+        printf "%d|%-20s|%-17s|%-15s|%-10s|%-8s|%-16s|%-17s\n" \
+            "$i" "$device_name" "$mac_address" "$ip_address" "$interface_type" "$active" "$device_id" "$profile_name" \
             > "$temp_dir/device_$i.txt"
     }
     
     # Export function and variables for parallel execution
-    export -f process_device
-    export BoxUSER BoxPW BoxIP CONTROL_URL SERVICE
+    export -f process_device getProfileName
+    export BoxUSER BoxPW BoxIP CONTROL_URL SERVICE SID
     
     # Create header
-    printf "%-3s %-20s %-17s %-15s %-10s %-8s %-12s %-10s\n" \
+    printf "%-3s %-20s %-17s %-15s %-10s %-8s %-16s %-17s\n" \
         "ID" "Device Name" "MAC Address" "IP Address" "Interface" "Active" "LAN-Dev-ID" "Profile"
-    echo "----------------------------------------------------------------------------------------------------"
+    echo "-----------------------------------------------------------------------------------------------------------"
     
     # Process devices in parallel (limit concurrent jobs to avoid overwhelming the Fritz!Box)
-    max_parallel=10
+    max_parallel=4
     
     # Launch parallel jobs in batches
     for ((i=0; i<total_hosts; i++)); do
         # Launch background job
-        process_device "$i" "$temp_dir" "$device_data" &
+        process_device "$i" "$temp_dir" "$device_data" "$SID" &
         
         # Limit number of parallel jobs
         if (( (i + 1) % max_parallel == 0 )); then
@@ -739,6 +760,8 @@ ListAllDevices() {
     echo ""
     echo "Total devices: $total_hosts"
     echo "Processing completed using parallel execution!"
+    echo ""
+    echo "Note: For actual profile assignments, use: ./fritzBoxShell.sh DEVICEPROFILES"
     
     # Cleanup
     rm -rf "$temp_dir"
@@ -872,6 +895,80 @@ ListAllDevicesUltraFast() {
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------- FUNCTION getProfileName - Helper to map profile ID to name ----------------- ###
+### ----------------------------- Maps profile IDs to human-readable names ----------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+# Global variable to cache profile names
+PROFILE_CACHE=""
+
+getProfileName() {
+    local profile_id="$1"
+    
+    # Return early for empty/invalid IDs
+    [ -z "$profile_id" ] && echo "N/A" && return
+    
+    # Try to get profile name from Fritz!Box API if we have a SID
+    if [ -n "$SID" ] && [ -z "$PROFILE_CACHE" ]; then
+        # Fetch profile data once and cache it
+        PROFILE_CACHE=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=kidPro&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null)
+    fi
+    
+    # For custom profiles, use the SAME extraction logic as LISTPROFILES
+    if [ -n "$PROFILE_CACHE" ] && [ "$profile_id" != "1" ] && [ "$profile_id" != "2" ] && [ "$profile_id" != "3" ]; then
+        # Look for filtprof pattern for this specific profile ID
+        filtprof_entry="filtprof$profile_id"
+        
+        # Check if this filtprof exists in the data (meaning it's a real custom profile)
+        if echo "$PROFILE_CACHE" | grep -q "$filtprof_entry"; then
+            profile_name=""
+            
+            # Method 1: Extract profile name from title attribute that appears before this filtprof
+            html_segment=$(echo "$PROFILE_CACHE" | grep -o "title=\"[^\"]*\"[^<]*<[^>]*>[^<]*</[^>]*>[^<]*<[^>]*>[^<]*</[^>]*>[^<]*<[^>]*>[^<]*</[^>]*>[^<]*<[^>]*>[^<]*$filtprof_entry" 2>/dev/null)
+            
+            if [ -n "$html_segment" ]; then
+                profile_name=$(echo "$html_segment" | grep -o 'title="[^"]*"' | head -1 | sed 's/title="\([^"]*\)"/\1/')
+            fi
+            
+            # Method 2: If that didn't work, use the same logic as LISTPROFILES
+            if [ -z "$profile_name" ]; then
+                # Get all custom profile titles, excluding standard ones and UI elements
+                all_titles=$(echo "$PROFILE_CACHE" | grep -o 'title="[A-Za-z][^"]*"' | sed 's/title="\([^"]*\)"/\1/' | grep -v "Bearbeiten\|Löschen\|Online-Zeit\|Geteiltes\|Filter\|Gesperrte\|Standard\|Guest\|Unrestricted\|Gast\|Unbeschränkt")
+                
+                # Create a mapping of filtprof entries to profile names
+                # Get all filtprof entries and match them with profile names in order
+                all_filtprofs=$(echo "$PROFILE_CACHE" | grep -o "filtprof[0-9]\{4,\}" | sed 's/filtprof//' | sort -n)
+                
+                # Find the position of our profile_id in the sorted list
+                position=1
+                for fid in $all_filtprofs; do
+                    if [ "$fid" = "$profile_id" ]; then
+                        profile_name=$(echo "$all_titles" | sed -n "${position}p")
+                        break
+                    fi
+                    position=$((position + 1))
+                done
+            fi
+            
+            # If we found a valid custom profile name, return it
+            if [ -n "$profile_name" ] && [ "$profile_name" != "Online-Zeit" ] && [ "$profile_name" != "Geteiltes Budget" ] && [ "$profile_name" != "Filter" ] && [ "$profile_name" != "Gesperrte Anwendungen" ]; then
+                echo "$profile_name"
+                return
+            fi
+        fi
+    fi
+    
+    # Fallback to common Fritz!Box default profile names
+    case "$profile_id" in
+        "1") echo "Standard" ;;
+        "2") echo "Guest" ;;
+        "3") echo "Unrestricted" ;;
+        "0"|"") echo "Default" ;;
+        *) echo "Profile-$profile_id" ;;  # Generic format when API lookup fails
+    esac
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### ---------------------- FUNCTION ListProfiles - List Available Filter Profiles -------------------- ###
 ### ----------------------------- Using AHA-HTTP-Interface for profile data ---------------------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -888,92 +985,162 @@ ListProfiles() {
         return 1
     fi
     
-    # Get profile information from data.lua
+    echo "Available Filter Profiles:"
+    echo "=========================="
+    printf "%-8s %-25s %-50s\n" "Profile ID" "Profile Name" "Description"
+    echo "-------------------------------------------------------------------------------------"
+    
+    # Get profile data from kidPro endpoint
     profile_data=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=kidPro&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null)
     
-    if [ $? -ne 0 ] || [ -z "$profile_data" ]; then
-        echo "Trying alternative method to retrieve profile data..."
-        
-        # Alternative: Try to get profiles from device management page
-        profile_data=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=netDev&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null)
-    fi
+    profiles_found=false
     
-    if [ $? -ne 0 ] || [ -z "$profile_data" ]; then
-        echo "Error: Could not retrieve profile information from Fritz!Box"
-        echo "This might be due to:"
-        echo "  - Insufficient user permissions"
-        echo "  - Parental controls not configured"
-        echo "  - Fritz!Box firmware version compatibility"
-        
-        # Logout the SID
-        wget -O /dev/null "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
-        return 1
-    fi
-    
-    # Check if jq is available for JSON parsing
-    if ! command -v jq &> /dev/null; then
-        echo "Warning: jq is not installed - showing basic profile information"
-        echo ""
-        echo "Available Filter Profiles:"
-        echo "=========================="
-        echo "Default profiles that are typically available:"
-        echo "  ID: 0 or 1 - Standard (unrestricted access)"
-        echo "  ID: 2      - Blocked (no internet access)"
-        echo "  ID: 3+     - Custom profiles (if configured)"
-        echo ""
-        echo "To see detailed profiles, install jq: sudo apt-get install jq"
-    else
-        # Parse profiles from JSON data
-        echo "Available Filter Profiles:"
-        echo "=========================="
-        
-        # Try to extract profiles from the data
-        profiles=$(echo "$profile_data" | jq -r '.data.profiles[]? | "\(.id)|\(.name)|\(.description // "No description")"' 2>/dev/null)
+    if [ -n "$profile_data" ] && command -v jq &> /dev/null; then
+        # Try to extract profiles from JSON structure first
+        profiles=$(echo "$profile_data" | jq -r '.data.profiles[]? | "\(.id)|\(.name)|\(.description // .desc // "No description")"' 2>/dev/null)
         
         if [ -z "$profiles" ]; then
-            # Try alternative JSON structure
-            profiles=$(echo "$profile_data" | jq -r '.data.kidProfiles[]? | "\(.id)|\(.name)|\(.desc // "No description")"' 2>/dev/null)
+            profiles=$(echo "$profile_data" | jq -r '.data.kidProfiles[]? | "\(.id)|\(.name)|\(.desc // .description // "No description")"' 2>/dev/null)
         fi
         
         if [ -z "$profiles" ]; then
-            # Try yet another structure for newer firmware
-            profiles=$(echo "$profile_data" | jq -r 'try (.data[] | select(.profiles) | .profiles[] | "\(.id)|\(.name)|\(.description // "No description")")' 2>/dev/null)
+            profiles=$(echo "$profile_data" | jq -r '.data.filter[]? | "\(.id)|\(.name)|\(.description // .desc // "No description")"' 2>/dev/null)
+        fi
+        
+        # If JSON parsing didn't work, try extracting from filtprof pattern
+        if [ -z "$profiles" ]; then
+            echo "Trying to extract profiles using filtprof pattern..."
+            
+            # Try kidPro endpoint first (where you found the filtprof pattern)
+            kidpro_data=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=kidPro&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null)
+            
+            # Start with standard profiles
+            temp_profiles="1|Standard|Unrestricted internet access (default)\n2|Guest|Guest access with restricted applications\n3|Unrestricted|Unrestricted access profile\n"
+            
+            if [ -n "$kidpro_data" ]; then
+                # Look for filtprof pattern (e.g., filtprof6398)
+                filtprof_matches=$(echo "$kidpro_data" | grep -o "filtprof[0-9]\{4,\}" | sort -u)
+                
+                for filtprof_entry in $filtprof_matches; do
+                    # Extract the profile ID from filtprofXXXX
+                    profile_id=$(echo "$filtprof_entry" | sed 's/filtprof//')
+                    
+                    # Skip standard profiles (1, 2, 3)
+                    if [ "$profile_id" != "1" ] && [ "$profile_id" != "2" ] && [ "$profile_id" != "3" ]; then
+                        # Use a targeted approach to find the profile name associated with this specific filtprof
+                        # Look for the pattern: title="ProfileName" ... value="filtprofXXXX"
+                        profile_name=""
+                        
+                        # Method 1: Extract profile name from title attribute that appears before this filtprof
+                        # Split the HTML at this filtprof and look backwards for title attributes
+                        html_segment=$(echo "$kidpro_data" | grep -o "title=\"[^\"]*\"[^<]*<[^>]*>[^<]*</[^>]*>[^<]*<[^>]*>[^<]*</[^>]*>[^<]*<[^>]*>[^<]*</[^>]*>[^<]*<[^>]*>[^<]*$filtprof_entry" 2>/dev/null)
+                        
+                        if [ -n "$html_segment" ]; then
+                            profile_name=$(echo "$html_segment" | grep -o 'title="[^"]*"' | head -1 | sed 's/title="\([^"]*\)"/\1/')
+                        fi
+                        
+                        # Method 2: Extract profile name directly from the data-name attribute in the same row as filtprof
+                        if [ -z "$profile_name" ]; then
+                            # Look for the data-name attribute that appears in the same context as this filtprof
+                            # Since the HTML shows: data-name="ProfileName"...value="filtprofXXXX"
+                            
+                            # Extract the line/section containing this filtprof and get the data-name from it
+                            filtprof_line=$(echo "$kidpro_data" | tr '>' '\n' | grep -A 5 -B 5 "$filtprof_entry" | tr '\n' '>')
+                            
+                            if [ -n "$filtprof_line" ]; then
+                                # Extract data-name from this line
+                                profile_name=$(echo "$filtprof_line" | grep -o 'data-name="[^"]*"' | sed 's/data-name="\([^"]*\)"/\1/' | head -1)
+                            fi
+                            
+                            # If data-name approach didn't work, try a different method
+                            # Look for the pattern where the profile name appears before the filtprof in the HTML
+                            if [ -z "$profile_name" ]; then
+                                # Split HTML at this filtprof and look for the last title/data-name before it
+                                html_before=$(echo "$kidpro_data" | sed "s/$filtprof_entry.*//" | tail -c 200)
+                                profile_name=$(echo "$html_before" | grep -o 'data-name="[A-Za-z][^"]*"' | tail -1 | sed 's/data-name="\([^"]*\)"/\1/')
+                                
+                                # If still no luck, try title attribute
+                                if [ -z "$profile_name" ]; then
+                                    profile_name=$(echo "$html_before" | grep -o 'title="[A-Za-z][^"]*"' | tail -1 | sed 's/title="\([^"]*\)"/\1/')
+                                fi
+                            fi
+                        fi
+                        
+                        # Clean up the profile name and validate it
+                        if [ -n "$profile_name" ] && [ "$profile_name" != "Online-Zeit" ] && [ "$profile_name" != "Geteiltes Budget" ] && [ "$profile_name" != "Filter" ] && [ "$profile_name" != "Gesperrte Anwendungen" ]; then
+                            temp_profiles="$temp_profiles$profile_id|$profile_name|Custom profile\n"
+                        else
+                            # Fallback: show generic name with ID
+                            temp_profiles="$temp_profiles$profile_id|Custom-Profile-$profile_id|Custom profile\n"
+                        fi
+                    fi
+                done
+                
+                profiles=$(echo -e "$temp_profiles" | grep -v "^$" | sort -t'|' -k1,1n)
+            fi
         fi
         
         if [ -n "$profiles" ]; then
-            printf "%-5s %-25s %-50s\n" "ID" "Profile Name" "Description"
-            echo "--------------------------------------------------------------------------------"
+            profiles_found=true
             
             echo "$profiles" | while IFS='|' read -r id name desc; do
                 [ -z "$name" ] && name="Unnamed Profile"
                 [ -z "$desc" ] && desc="No description"
+                
+                # Clean up the fields
+                name=$(echo "$name" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                desc=$(echo "$desc" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
                 
                 # Truncate long descriptions
                 if [ ${#desc} -gt 50 ]; then
                     desc="${desc:0:47}..."
                 fi
                 
-                printf "%-5s %-25s %-50s\n" "$id" "$name" "$desc"
+                printf "%-8s %-25s %-50s\n" "$id" "$name" "$desc"
             done
-        else
-            echo "No custom profiles found. Default profiles available:"
-            echo ""
-            printf "%-5s %-25s %-50s\n" "ID" "Profile Name" "Description"
-            echo "--------------------------------------------------------------------------------"
-            printf "%-5s %-25s %-50s\n" "0/1" "Standard" "Unrestricted internet access"
-            printf "%-5s %-25s %-50s\n" "2" "Blocked" "No internet access"
-            echo ""
-            echo "Configure custom profiles in Fritz!Box web interface under:"
-            echo "Internet > Filters > Parental Controls"
         fi
+    fi
+    
+    # Generic fallback method - only show standard profiles that exist on all Fritz!Box devices
+    if [ "$profiles_found" = false ]; then
+        echo "Could not retrieve custom profiles from API. Showing standard profiles only:"
+        echo ""
+        
+        # Only show the standard profiles that exist on all Fritz!Box devices
+        printf "%-8s %-25s %-50s\n" "1" "Standard" "Unrestricted internet access (default)"
+        printf "%-8s %-25s %-50s\n" "2" "Guest" "Guest access with restricted applications"
+        printf "%-8s %-25s %-50s\n" "3" "Unrestricted" "Unrestricted access profile"
+        
+        echo ""
+        echo "Note: Custom profiles may exist but could not be retrieved."
+        echo "      Custom profiles will show as 'Profile-ID' in device listings."
+        
+        profiles_found=true
+    fi
+    
+    if [ "$profiles_found" = false ]; then
+        echo "No custom profiles configured. Available standard profiles:"
+        echo ""
+        printf "%-8s %-25s %-50s\n" "1" "Standard" "Unrestricted internet access (default)"
+        printf "%-8s %-25s %-50s\n" "2" "Blocked" "No internet access"
+        echo ""
+        echo "Note: To create custom profiles, use the Fritz!Box web interface:"
+        echo "Internet > Filters > Parental Controls"
     fi
     
     echo ""
     echo "Usage with SETPROFILE:"
     echo "  ./fritzBoxShell.sh SETPROFILE <device_name> <device_id> <profile_id>"
-    echo "  Example: ./fritzBoxShell.sh SETPROFILE \"Johns Phone\" \"12345\" \"2\""
+    echo "  Example: ./fritzBoxShell.sh SETPROFILE \"AlexaBad\" \"2227\" \"6398\""
     echo ""
     echo "To get device IDs, use: ./fritzBoxShell.sh LISTDEVICES"
+    echo ""
+    echo "Standard Profile ID Reference:"
+    echo "  1    = Standard (unrestricted)"
+    echo "  2    = Guest (guest with restrictions)"
+    echo "  3    = Unrestricted (unrestricted)"
+    echo ""
+    echo "Custom profiles (if any) will show as 'Profile-ID' in device listings."
     
     # Logout the SID
     wget -O /dev/null "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
@@ -1010,24 +1177,55 @@ ListDevicesWithProfiles() {
     
     echo "Devices with Profile Assignments:"
     echo "================================="
-    printf "%-20s %-17s %-15s %-12s %-15s %-10s\n" \
+    printf "%-20s %-17s %-15s %-16s %-16s %-10s\n" \
         "Device Name" "MAC Address" "IP Address" "Device ID" "Profile Name" "Status"
-    echo "--------------------------------------------------------------------------------------------"
+    echo "------------------------------------------------------------------------------------------------------"
     
     # Parse device data with jq if available
     if command -v jq &> /dev/null; then
         device_count=0
-        echo "$device_data" | jq -r '.data.active[]? | "\(.name // "Unknown")|\(.mac)|\(.ip // "N/A")|\(.id // "N/A")|\(.profile_name // "Default")|\(.state // "Unknown")"' 2>/dev/null | \
-        while IFS='|' read -r name mac ip dev_id profile status; do
+        echo "$device_data" | jq -r '.data.active[]? | "\(.name // "Unknown")|\(.mac)|\(.UID // "N/A")|\(.state // "Unknown")"' 2>/dev/null | \
+        while IFS='|' read -r name mac device_uid status; do
+            # Get profile information by querying the device edit page
+            profile="Default"
+            dev_id="N/A"
+            ip="N/A"
+            
+            if [ -n "$device_uid" ] && [ "$device_uid" != "N/A" ] && [ "$device_uid" != "null" ]; then
+                dev_id="$device_uid"
+                
+                # Get profile information
+                device_profile_data=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=edit_device&dev=$device_uid" "http://$BoxIP/data.lua" 2>/dev/null)
+                if [ -n "$device_profile_data" ]; then
+                    profile_selected=$(echo "$device_profile_data" | jq -r '.data.vars.dev.netAccess.kisi.profiles.selected // ""' 2>/dev/null)
+                    if [ -n "$profile_selected" ] && [ "$profile_selected" != "" ] && [ "$profile_selected" != "null" ]; then
+                        # Extract profile ID from filtprofXXXX format
+                        profile_id=$(echo "$profile_selected" | sed 's/filtprof//')
+                        profile=$(getProfileName "$profile_id")
+                    fi
+                    
+                    # Get IP address
+                    ip=$(echo "$device_profile_data" | jq -r '.data.vars.dev.ipv4.current.ip // "N/A"' 2>/dev/null)
+                fi
+            fi
             # Truncate long names
             if [ ${#name} -gt 20 ]; then
                 name="${name:0:17}..."
             fi
-            if [ ${#profile} -gt 15 ]; then
-                profile="${profile:0:12}..."
+            if [ ${#profile} -gt 16 ]; then
+                profile="${profile:0:13}..."
             fi
             
-            printf "%-20s %-17s %-15s %-12s %-15s %-10s\n" \
+            # Clean up status - convert JSON to readable text
+            case "$status" in
+                *"globe_online"*) status="Online" ;;
+                *"led_green"*) status="Connected" ;;
+                *"globe_offline"*) status="Offline" ;;
+                *"led_red"*) status="Disconnected" ;;
+                *) status="Unknown" ;;
+            esac
+            
+            printf "%-20s %-17s %-15s %-16s %-16s %-10s\n" \
                 "$name" "$mac" "$ip" "$dev_id" "$profile" "$status"
             device_count=$((device_count + 1))
         done
