@@ -478,11 +478,45 @@ get_filtered_clients() {
         return 1
     fi
 
-    # Clean the JSON data
+    # Clean the JSON data and fix common Fritz!Box JSON issues
     mesh_list_json=$(echo "$mesh_list_json" | tr -d '\r' | sed 's/\\//g')
 
     if [ -z "$mesh_list_json" ]; then
         echo "Error: mesh_list_json is empty!"
+        return 1
+    fi
+
+    # Additional JSON cleaning for Fritz!Box specific issues
+    # Remove trailing commas and fix common JSON syntax issues
+    mesh_list_json=$(echo "$mesh_list_json" | sed 's/,\s*}/}/g' | sed 's/,\s*]/]/g')
+    
+    # Fix specific Fritz!Box JSON issues
+    # Fix malformed quoted strings like: "field": " """, -> "field": "",
+    mesh_list_json=$(echo "$mesh_list_json" | sed 's/: " """,/: "",/g')
+    # Fix other quote issues: "field": """, -> "field": "",
+    mesh_list_json=$(echo "$mesh_list_json" | sed 's/: """,/: "",/g')
+
+    # Validate JSON before processing
+    if ! echo "$mesh_list_json" | jq empty 2>/dev/null; then
+        echo "Error: JSON data from Fritz!Box is malformed."
+        echo "Attempting to save raw data for debugging..."
+        
+        # Save raw data to a debug file
+        debug_file="tmp_rovodev_mesh_debug_$(date +%s).json"
+        echo "$mesh_list_json" > "$debug_file"
+        echo "Raw mesh data saved to: $debug_file"
+        echo "Please check this file for JSON syntax errors."
+        
+        # Try to identify the specific error location
+        error_info=$(echo "$mesh_list_json" | jq empty 2>&1 | head -1)
+        echo "JSON Error: $error_info"
+        
+        # Try to extract line 4389 if it exists
+        if echo "$error_info" | grep -q "line 4389"; then
+            echo "Problematic line 4389:"
+            sed -n '4389p' "$debug_file" 2>/dev/null || echo "Could not extract line 4389"
+        fi
+        
         return 1
     fi
 
@@ -530,33 +564,45 @@ get_filtered_clients() {
 
     # echo "$unique_clients" > unique_clients_debug.json
 
-    # Loop over all clients and retrieve the IP only if -withIP is set
-	#
-	# OLD CODE which was making toubles on Cygwin or windows based shell envorinments
-	#
-    # for i in $(echo "$unique_clients" | jq -r '. | keys_unsorted | .[]'); do
-    #     mac=$(echo "$unique_clients" | jq -r ".[$i].mac")  # Get MAC address
-    #     ip=$(get_ip_from_mac "$mac" "$show_ip")  # Retrieve IP only if -withIP is set
-
-    #     # Update the JSON with the IP address if it exists
-    #     if [ -n "$ip" ]; then
-    #         unique_clients=$(echo "$unique_clients" | jq ".[$i].ip = \"$ip\"")
-    #     fi
-    # done
-
-	# Loop over all clients and retrieve the IP only if -withIP is set
-	for i in $(echo "$unique_clients" | jq -r '. | keys_unsorted | .[]'); do
-		# Hole die MAC-Adresse sicher mit --argjson
-		mac=$(echo "$unique_clients" | jq -r --argjson i "$i" '.[$i].mac')
-		
-		# Get the IP-Address based on the MAC-Address
-		ip=$(get_ip_from_mac "$mac" "$show_ip")
-
-		# Update the JSON with the IP address if it exists with --arg
-		if [ -n "$ip" ]; then
-			unique_clients=$(echo "$unique_clients" | jq --argjson i "$i" --arg ip "$ip" '.[$i].ip = $ip')
-		fi
-	done
+    # Only fetch IP addresses if -withIP parameter is specified (efficiency improvement)
+    if [ "$show_ip" == "-withIP" ]; then
+        echo "Fetching IP addresses for devices (this may take a moment)..."
+        
+        # Create a temporary file to avoid Windows/Cygwin jq variable issues
+        temp_clients_file=$(mktemp)
+        echo "$unique_clients" > "$temp_clients_file"
+        
+        # Get the total number of clients for progress indication
+        total_clients=$(jq 'length' "$temp_clients_file")
+        current=0
+        
+        # Process each client individually to avoid shell variable issues
+        while IFS= read -r client_json; do
+            current=$((current + 1))
+            echo "Processing device $current/$total_clients..."
+            
+            # Extract MAC address safely without shell variables in jq
+            mac=$(echo "$client_json" | jq -r '.mac')
+            
+            # Get IP address for this MAC
+            ip=$(get_ip_from_mac "$mac" "$show_ip")
+            
+            # Update the client entry with IP if found
+            if [ -n "$ip" ] && [ "$ip" != "" ]; then
+                # Update the specific client in the temp file
+                jq --arg mac "$mac" --arg ip "$ip" 'map(if .mac == $mac then .ip = $ip else . end)' "$temp_clients_file" > "${temp_clients_file}.tmp"
+                mv "${temp_clients_file}.tmp" "$temp_clients_file"
+            fi
+        done < <(jq -c '.[]' "$temp_clients_file")
+        
+        # Read the updated clients back
+        unique_clients=$(cat "$temp_clients_file")
+        rm -f "$temp_clients_file" "${temp_clients_file}.tmp"
+        
+        echo "IP address lookup completed."
+    else
+        echo "Skipping IP address lookup (use -withIP to include IP addresses)"
+    fi
 
 	unique_clients=$(echo "$unique_clients" | jq 'sort_by(.type)')
 
