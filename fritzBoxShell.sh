@@ -1932,42 +1932,66 @@ WANstate() {
 
 WANreconnect() {
 
+    # Try both service endpoints for backward compatibility
+    # Method 1: DSL Forum standard (newer firmware)
+    location1="/upnp/control/wanipconnection1"
+    uri1="urn:dslforum-org:service:WANIPConnection:1"
+    
+    # Method 2: UPnP IGD standard (older firmware)
+    location2="/igdupnp/control/WANIPConn1"
+    uri2="urn:schemas-upnp-org:service:WANIPConnection:1"
+
+    # Determine which service to use
+    location=""
+    uri=""
+    service_method=""
+
+    # Test Method 1 first (DSL Forum standard)
+    if verify_action_availability "$location1" "$uri1" "GetExternalIPAddress" >/dev/null 2>&1; then
+        location="$location1"
+        uri="$uri1"
+        service_method="DSL Forum standard"
+        echo "Using DSL Forum standard service endpoint"
+    # Fallback to Method 2 (UPnP IGD standard)
+    elif verify_action_availability "$location2" "$uri2" "GetExternalIPAddress" >/dev/null 2>&1; then
+        location="$location2"
+        uri="$uri2"
+        service_method="UPnP IGD standard"
+        echo "Using UPnP IGD standard service endpoint (legacy)"
+    else
+        echo "Error: No compatible WAN IP Connection service found."
+        echo "Neither DSL Forum nor UPnP IGD standard endpoints are available."
+        echo "You can try with 'fritzBoxShell.sh ACTIONS' to get a list of available services and actions."
+        return 1
+    fi
+
     #Display IP Address before reconnect
-    location="/igdupnp/control/WANIPConn1"
-    uri="urn:schemas-upnp-org:service:WANIPConnection:1"
     action='GetExternalIPAddress'
-
+    echo "Getting current IP address using $service_method..."
     readout
 
-    location="/igdupnp/control/WANIPConn1"
-	uri="urn:schemas-upnp-org:service:WANIPConnection:1"
-	action='ForceTermination'
+    # Perform the reconnection
+    action='ForceTermination'
 
-	if verify_action_availability "$location" "$uri" "$action"; then
-		# Do nothing but continue script execution
-		:
-	else
-		echo "Action '$action' canot be executed, because it seems to be not available."
-		echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
-		return
-	fi
+    if verify_action_availability "$location" "$uri" "$action" >/dev/null 2>&1; then
+        echo ""
+        echo "WAN RECONNECT initiated using $service_method - Waiting for new IP... (30 seconds)"
 
-    echo ""
-    echo "WAN RECONNECT initiated - Waiting for new IP... (30 seconds)"
+        curl -k -m 25 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?> <s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'> <s:Body> <u:$action xmlns:u='$uri' /> </s:Body> </s:Envelope>" &>/dev/null
 
-    curl -k -m 25 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?> <s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'> <s:Body> <u:$action xmlns:u='$uri' /> </s:Body> </s:Envelope>" &>/dev/null
+        sleep 30
 
-    sleep 30
+        echo ""
+        echo "FINISHED. Find new IP Address below:"
 
-    echo ""
-    echo "FINISHED. Find new IP Address below:"
-
-    #Display IP Address after reconnect
-    location="/igdupnp/control/WANIPConn1"
-    uri="urn:schemas-upnp-org:service:WANIPConnection:1"
-    action='GetExternalIPAddress'
-
-    readout
+        #Display IP Address after reconnect
+        action='GetExternalIPAddress'
+        readout
+    else
+        echo "Action '$action' cannot be executed, because it seems to be not available."
+        echo "You can try with 'fritzBoxShell.sh ACTIONS' to get a list of available services and actions."
+        return 1
+    fi
 
 }
 
