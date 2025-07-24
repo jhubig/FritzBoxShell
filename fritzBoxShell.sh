@@ -2649,39 +2649,122 @@ confBackup() {
 ### ----------------------------------------------------------------------------------------------------- ###
 
 sendSMS() {
-		location="/upnp/control/x_tam"
-		uri="urn:dslforum-org:service:X_AVM-DE_TAM:1"
-		action='X_AVM-DE_SendSMS'
+    # Try multiple service endpoints for SMS functionality
+    # Method 1: TAM service (original implementation)
+    location1="/upnp/control/x_tam"
+    uri1="urn:dslforum-org:service:X_AVM-DE_TAM:1"
+    
+    # Method 2: Messaging service (alternative)
+    location2="/upnp/control/messaging"
+    uri2="urn:dslforum-org:service:X_AVM-DE_Messaging:1"
+    
+    # Method 3: OnTel service (another alternative)
+    location3="/upnp/control/x_contact"
+    uri3="urn:dslforum-org:service:X_AVM-DE_OnTel:1"
 
-		if verify_action_availability "$location" "$uri" "$action"; then
-				# Do nothing but continue script execution
-				:
-		else
-			echo "Action '$action' canot be executed, because it seems to be not available."
-			echo "You can try with "fritzBoxShell.sh ACTIONS" to get a list of available services and actions."
-			return
-		fi
+    action='X_AVM-DE_SendSMS'
+    PHONE_NUMBER=$option2
+    MESSAGE=$option3
 
-		PHONE_NUMBER=$option2
-		MESSAGE=$option3
+    # Input validation
+    if [ -z "$PHONE_NUMBER" ] || [ -z "$MESSAGE" ]; then
+        echo "Error: Both phone number and message are required."
+        echo "Usage: ./fritzBoxShell.sh SENDSMS <phone_number> <message>"
+        return 1
+    fi
 
-		echo "WARNING: This function was never tested. Please report any issues to the developer. Thanks. Refer to Issue https://github.com/jhubig/FritzBoxShell/issues/40."
+    echo "=== SMS SEND DEBUG INFORMATION ==="
+    echo "Phone Number: $PHONE_NUMBER"
+    echo "Message: $MESSAGE"
+    echo "Attempting to find SMS service..."
+    echo ""
 
-		RESPONSE=$(curl -k -m 30 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" \
-			-H 'Content-Type: text/xml; charset="utf-8"' \
-			-H "SoapAction:$uri#$action" \
-			-d "<?xml version='1.0' encoding='utf-8'?>
-				<s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
-					<s:Body>
-						<u:$action xmlns:u='$uri'>
-							<NewPhoneNumber>$PHONE_NUMBER</NewPhoneNumber>
-                        	<NewMessage>$MESSAGE</NewMessage>
-						</u:$action>
-					</s:Body>
-				</s:Envelope>")
-		
-		echo "Reponse from FritzBox: $RESPONSE"
+    # Determine which service to use
+    location=""
+    uri=""
+    service_method=""
 
+    # Test Method 1 first (TAM service - original)
+    echo "Testing Method 1: TAM service..."
+    if verify_action_availability "$location1" "$uri1" "$action" 2>/dev/null; then
+        location="$location1"
+        uri="$uri1"
+        service_method="TAM service"
+        echo "✓ Found SMS capability in TAM service"
+    # Test Method 2 (Messaging service)
+    elif verify_action_availability "$location2" "$uri2" "$action" 2>/dev/null; then
+        location="$location2"
+        uri="$uri2"
+        service_method="Messaging service"
+        echo "✓ Found SMS capability in Messaging service"
+    # Test Method 3 (OnTel service)
+    elif verify_action_availability "$location3" "$uri3" "$action" 2>/dev/null; then
+        location="$location3"
+        uri="$uri3"
+        service_method="OnTel service"
+        echo "✓ Found SMS capability in OnTel service"
+    else
+        echo "❌ SMS functionality not found in any known service."
+        echo ""
+        echo "=== DEBUGGING HELP ==="
+        echo "To find SMS services on your Fritz!Box, try:"
+        echo "1. ./fritzBoxShell.sh ACTIONS"
+        echo "2. Look for services containing 'SMS', 'Message', or 'OnTel'"
+        echo "3. Check if any service has 'X_AVM-DE_SendSMS' action"
+        echo ""
+        echo "Known possible service locations to check manually:"
+        echo "- /upnp/control/x_tam (TAM service)"
+        echo "- /upnp/control/messaging (Messaging service)"
+        echo "- /upnp/control/x_contact (OnTel service)"
+        echo "- /upnp/control/x_voip (VoIP service)"
+        return 1
+    fi
+
+    echo "Using: $service_method"
+    echo "Service URI: $uri"
+    echo "Control URL: $location"
+    echo ""
+
+    # Perform the SMS send
+    echo "Sending SMS..."
+    RESPONSE=$(curl -s -k -m 30 --anyauth -u "$BoxUSER:$BoxPW" "http://$BoxIP:49000$location" \
+        -H 'Content-Type: text/xml; charset="utf-8"' \
+        -H "SoapAction:$uri#$action" \
+        -d "<?xml version='1.0' encoding='utf-8'?>
+            <s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
+                <s:Body>
+                    <u:$action xmlns:u='$uri'>
+                        <NewPhoneNumber>$PHONE_NUMBER</NewPhoneNumber>
+                        <NewMessage>$MESSAGE</NewMessage>
+                    </u:$action>
+                </s:Body>
+            </s:Envelope>")
+    
+    echo "=== RESPONSE FROM FRITZ!BOX ==="
+    if [ -n "$RESPONSE" ]; then
+        echo "$RESPONSE"
+        
+        # Check for common success/error indicators
+        if echo "$RESPONSE" | grep -q "soap:Fault\|faultstring"; then
+            echo ""
+            echo "❌ SOAP Fault detected - SMS sending likely failed"
+            echo "Check the fault details above for more information"
+            return 1
+        elif echo "$RESPONSE" | grep -q "SendSMSResponse\|NewResult"; then
+            echo ""
+            echo "✓ SMS appears to have been sent successfully"
+            return 0
+        else
+            echo ""
+            echo "⚠️  Unclear response - SMS status unknown"
+            echo "Please check your Fritz!Box SMS outbox to verify"
+            return 0
+        fi
+    else
+        echo "❌ No response received from Fritz!Box"
+        echo "This could indicate a network issue or unsupported functionality"
+        return 1
+    fi
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
