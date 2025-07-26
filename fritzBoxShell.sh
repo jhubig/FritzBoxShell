@@ -1404,23 +1404,33 @@ verify_action_availability() {
     local uri=$2
     local action=$3
 
-    # Retrieve tr64desc.xml
-    tr64desc=$(curl -s "http://$BoxIP:49000/tr64desc.xml")
-    if [ -z "$tr64desc" ]; then
-        echo "Error: Could not retrieve tr64desc.xml."
-        return 1
-    fi
+    # Try tr64desc.xml first, then igddesc.xml for IGD services
+    local desc_files=("tr64desc.xml" "igddesc.xml")
+    local scpd_url=""
+    
+    for desc_file in "${desc_files[@]}"; do
+        # Retrieve description XML
+        desc_xml=$(curl -s "http://$BoxIP:49000/$desc_file")
+        if [ -z "$desc_xml" ]; then
+            continue
+        fi
 
-    # Temporary file for the XML data
-    temp_file=$(mktemp)
-    echo "$tr64desc" > "$temp_file"
+        # Temporary file for the XML data
+        temp_file=$(mktemp)
+        echo "$desc_xml" > "$temp_file"
 
-    # Find the SCPD URL
-    scpd_url=$(xmlstarlet sel -t -m "//*[local-name()='service']" \
-        -if "./*[local-name()='controlURL'][text()='$location']" \
-        -v "./*[local-name()='SCPDURL']" -n "$temp_file" | head -n 1)
+        # Find the SCPD URL
+        scpd_url=$(xmlstarlet sel -t -m "//*[local-name()='service']" \
+            -if "./*[local-name()='controlURL'][text()='$location']" \
+            -v "./*[local-name()='SCPDURL']" -n "$temp_file" | head -n 1)
 
-    rm "$temp_file"
+        rm "$temp_file"
+        
+        # If found, break out of loop
+        if [ -n "$scpd_url" ]; then
+            break
+        fi
+    done
 
     if [ -z "$scpd_url" ]; then
         echo "Error: No SCPD URL found for the provided controlURL ($location)."
@@ -2105,8 +2115,10 @@ IGDDSLLINKstate() {
 ### ----------------------------------------------------------------------------------------------------- ###
 
 IGDIPstate() {
+		# Use the IGD location - works in both older and newer FritzOS versions
 		location="/igdupnp/control/WANIPConn1"
 		uri="urn:schemas-upnp-org:service:WANIPConnection:1"
+
 		action='GetConnectionTypeInfo'
 
 		readout
