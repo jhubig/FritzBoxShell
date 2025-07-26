@@ -1755,23 +1755,56 @@ LANcount() {
 
 
 TR064_actions() {
-    # URL to the XML document
-    XML_URL="http://$BoxIP:49000/tr64desc.xml"
+    echo "Extracting services from both TR-064 and IGD protocols..."
+    echo "==========================================================="
 
-    # Retrieve XML data with curl
-    xml_data=$(curl -s "$XML_URL")
+    # Collect services from both tr64desc.xml and igddesc.xml
+    local all_services=""
+    local service_sources=""
+    local desc_files=("tr64desc.xml" "igddesc.xml")
+    
+    for desc_file in "${desc_files[@]}"; do
+        # URL to the XML document
+        XML_URL="http://$BoxIP:49000/$desc_file"
 
-    # Save the XML data to a temporary file
-    temp_file=$(mktemp)
-    echo "$xml_data" > "$temp_file"
+        # Retrieve XML data with curl
+        xml_data=$(curl -s "$XML_URL")
+        
+        if [ -n "$xml_data" ]; then
+            # Save the XML data to a temporary file
+            temp_file=$(mktemp)
+            echo "$xml_data" > "$temp_file"
 
-    echo "Extracting serviceType, controlURL, and SCPDURL from each service..."
+            # Use XMLStarlet to extract the service data
+            services=$(xmlstarlet sel -t -m "//*[local-name()='service']" \
+                -v "concat(./*[local-name()='SCPDURL'], ' | ', ./*[local-name()='serviceType'], ' | ', ./*[local-name()='controlURL'])" -n "$temp_file")
 
-    # Use XMLStarlet to extract the service data
-    services=$(xmlstarlet sel -t -m "//*[local-name()='service']" \
-        -v "concat(./*[local-name()='SCPDURL'], ' | ', ./*[local-name()='serviceType'], ' | ', ./*[local-name()='controlURL'])" -n "$temp_file")
-
-    rm "$temp_file"
+            rm "$temp_file"
+            
+            # Append to all_services with source information
+            if [ -n "$services" ]; then
+                # Add source info to each service line
+                local source_tag=""
+                if [ "$desc_file" = "tr64desc.xml" ]; then
+                    source_tag="[TR-064]"
+                else
+                    source_tag="[IGD]   "
+                fi
+                
+                # Add source tag to each line
+                local tagged_services=$(echo "$services" | sed "s/^/$source_tag /")
+                
+                if [ -n "$all_services" ]; then
+                    all_services="$all_services"$'\n'"$tagged_services"
+                else
+                    all_services="$tagged_services"
+                fi
+            fi
+        fi
+    done
+    
+    # Use all_services instead of services
+    services="$all_services"
 
     if [ -z "$services" ]; then
         echo "No services found!"
@@ -1779,9 +1812,33 @@ TR064_actions() {
     fi
 
     echo
-    echo "Available services:"
-    echo "--------------------"
-    echo "$services" | nl -w 2 -s '. '
+    echo "Available Services:"
+    echo "==================="
+    printf "%-4s %-8s %-25s %-45s %s\n" "No." "Source" "SCPD File" "Service Type" "Control URL"
+    echo "----+--------+-------------------------+---------------------------------------------+---------------------------"
+    
+    local counter=1
+    while IFS= read -r line; do
+        if [ -n "$line" ]; then
+            # Extract source tag
+            source=$(echo "$line" | cut -d' ' -f1)
+            # Extract the rest without source tag
+            rest=$(echo "$line" | cut -d' ' -f2-)
+            
+            # Parse the service data
+            scpd_url=$(echo "$rest" | cut -d'|' -f1 | xargs)
+            service_type=$(echo "$rest" | cut -d'|' -f2 | xargs)
+            control_url=$(echo "$rest" | cut -d'|' -f3 | xargs)
+            
+            # Truncate long service types for better display
+            if [ ${#service_type} -gt 43 ]; then
+                service_type="${service_type:0:40}..."
+            fi
+            
+            printf "%-4d %-8s %-25s %-45s %s\n" "$counter" "$source" "$scpd_url" "$service_type" "$control_url"
+            counter=$((counter + 1))
+        fi
+    done <<< "$services"
 
     echo
     echo "Please enter the number of the desired service or type 'exit' to quit:"
@@ -1803,10 +1860,14 @@ TR064_actions() {
     echo
     echo "Selected service: $selected_service"
 
-    # Extract individual fields
-    scpd_url=$(echo "$selected_service" | cut -d '|' -f 1 | xargs)
-    service_type=$(echo "$selected_service" | cut -d '|' -f 2 | xargs)
-    control_url=$(echo "$selected_service" | cut -d '|' -f 3 | xargs)
+    # Extract source tag and remove it from the line
+    source_tag=$(echo "$selected_service" | cut -d' ' -f1)
+    service_data=$(echo "$selected_service" | cut -d' ' -f2-)
+
+    # Extract individual fields from the cleaned service data
+    scpd_url=$(echo "$service_data" | cut -d '|' -f 1 | xargs)
+    service_type=$(echo "$service_data" | cut -d '|' -f 2 | xargs)
+    control_url=$(echo "$service_data" | cut -d '|' -f 3 | xargs)
 
     echo "controlURL: $control_url"
     echo "serviceType: $service_type"
