@@ -2719,6 +2719,13 @@ Reboot() {
 ### ----------------------------------------------------------------------------------------------------- ###
 
 confBackup() {
+		# Check if credentials are configured
+		if [ "$BoxUSER" = "YourUser" ]; then
+			echo "Error: Please configure your Fritz!Box credentials in fritzBoxShellConfig.sh"
+			echo "Set BoxUSER and BoxPW to your actual Fritz!Box username and password"
+			return 1
+		fi
+		
 		location="/upnp/control/deviceinfo"
 		uri="urn:dslforum-org:service:DeviceInfo:1"
 		action='GetSecurityPort'
@@ -2739,7 +2746,6 @@ confBackup() {
 		location="/upnp/control/deviceconfig"
 		uri="urn:dslforum-org:service:DeviceConfig:1"
 		action='X_AVM-DE_GetConfigFile'
-		option2='testing'
 			
 		if verify_action_availability "$location" "$uri" "$action"; then
 				# Do nothing but continue script execution
@@ -2750,12 +2756,22 @@ confBackup() {
 			return
 		fi
 
-		curlOutput1=$(curl -s --connect-timeout 60 -k -m 60 --anyauth -u "$BoxUSER:$BoxPW" "https://$BoxIP:$securityPort$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewX_AVM-DE_Password>$option2</NewX_AVM-DE_Password></u:$action></s:Body></s:Envelope>" | grep NewX_AVM-DE_ConfigFileUrl | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+		# Get the config file URL from Fritz!Box
+		curlResponse=$(curl -s --connect-timeout 60 -k -m 60 --anyauth -u "$BoxUSER:$BoxPW" "https://$BoxIP:$securityPort$location" -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewX_AVM-DE_Password>$option2</NewX_AVM-DE_Password></u:$action></s:Body></s:Envelope>")
+		
+		# Extract download URL from response
+		downloadUrl=$(echo "$curlResponse" | grep -o 'https://[^<]*' | head -1)
+		
+		if [ -z "$downloadUrl" ]; then
+			echo "Error: Could not extract download URL from Fritz!Box response"
+			echo "Full response: $curlResponse"
+			return 1
+		fi
 
-		# File Downlaod
+		# File Download
 		dt=$(date '+%Y%m%d_%H%M%S');
 		
-		$(curl -s -k "$curlOutput1" -o "$backupConfFolder${dt}_$backupConfFilename.export" --anyauth -u "$BoxUSER:$BoxPW")
+		curl -s -k "$downloadUrl" -o "$backupConfFolder${dt}_$backupConfFilename.export" --anyauth -u "$BoxUSER:$BoxPW"
 		if [ -e "${backupConfFolder}${dt}_${backupConfFilename}.export" ]; then
     		echo "File successfully downloaded: ${backupConfFolder}${dt}_${backupConfFilename}.export"
 		fi
