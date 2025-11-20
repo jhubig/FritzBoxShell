@@ -21,7 +21,7 @@
 # AVM, FRITZ!, Fritz!Box and the FRITZ! logo are registered trademarks of AVM GmbH - https://avm.de/
 
 
-version=1.0.dev
+version=1.2.0
 
 dir=$(dirname "$0")
 
@@ -2746,6 +2746,7 @@ confBackup() {
 		location="/upnp/control/deviceconfig"
 		uri="urn:dslforum-org:service:DeviceConfig:1"
 		action='X_AVM-DE_GetConfigFile'
+		# option2='testing'  # REMOVED: Fixed hardcoded password that overrides user input (Issue #60)
 			
 		if verify_action_availability "$location" "$uri" "$action"; then
 				# Do nothing but continue script execution
