@@ -368,7 +368,47 @@ WireguardVPNstate(){
 		# Switch on/off the connection if the connection was found
 		if [ "$connectionID" != "" ]; then
 			wget -O - --post-data "xhr=1&sid=$SID&page=shareWireguard&$connectionID=$connectionStateString&active_$connectionID=$connectionState&apply=" "http://$BoxIP/data.lua" &>/dev/null
-			echo "$connectionName ($connectionID) successfuly switched $connectionStateString."
+			echo "$connectionName ($connectionID) successfully switched $connectionStateString."
+		elif [ "$connectionID" == "" ]; then
+			echo "$connectionName not found."
+		fi
+
+	fi
+
+	# Logout the "used" SID
+	wget -O - "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------------ FUNCTION IPSEC VPN connection change --------------------------------- ###
+### ----------------------------- Here the TR-064 protocol cannot be used. ------------------------------ ###
+### ----------------------------------------------------------------------------------------------------- ###
+### ---------------------------------------- AHA-HTTP-Interface ----------------------------------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+IpSecVPNstate(){
+	# Get the a valid SID
+	getSID
+
+	connectionName="$option2"
+
+	if [ "$option3" != "0" ] && [ "$option3" != "1" ]; then echo "Add 0 for switching OFF or 1 for switching ON."
+	else
+		connectionState=$option3
+		if [ "$connectionState" = "1" ]; then connectionStateString="on";
+		elif [ "$connectionState" = "0" ]; then connectionStateString="off";
+		fi
+		# Get the connection ID
+        connectionID=$(wget -O - "http://$BoxIP/api/v0/generic/vpn" --header="AUTHORIZATION: AVM-SID $SID" 2> /dev/null | jq '.connection[] | select(.name == "'"$connectionName"'").UID // empty' --raw-output)
+		
+		# Switch on/off the connection if the connection was found
+		if [ "$connectionID" != "" ]; then
+            curl "http://$BoxIP/api/v0/generic/vpn/connection/$connectionID"  \
+             -X PUT \
+             -H "AUTHORIZATION: AVM-SID $SID" \
+             -H 'Content-Type: application/json' \
+             --data-raw '{"activated":"'"$connectionState"'"}' &> /dev/null \
+             && echo "$connectionName ($connectionID) successfully switched $connectionStateString."
 		elif [ "$connectionID" == "" ]; then
 			echo "$connectionName not found."
 		fi
@@ -2947,6 +2987,7 @@ DisplayArguments() {
 	echo "| KEYLOCK         | 0 or 1                    | Activate (1) or deactivate (0) the Keylock (buttons de- or activated)       |"
 	echo "| SIGNAL_STRENGTH | 100,50,25,12 or 6 %       | Set your signal strength (channel settings will then be set to manual)      |"
 	echo "| WIREGUARD_VPN   | <name> and 0 or 1         | Name of your connection in \"\" (e.g. \"Test 1\"). 0 (OFF) and 1 (ON)           |"
+	echo "| IPSEC_VPN       | <name> and 0 or 1         | Name of your connection in \"\" (e.g. \"Test 1\"). 0 (OFF) and 1 (ON)           |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| MISC_LUA        | totalConnectionsWLAN      | Number of total connected WLAN clients (incl. full Mesh)                    |"
 	echo "| MISC_LUA        | totalConnectionsWLAN2G    | Number of total connected 2,4 Ghz WLAN clients (incl. full Mesh)            |"
@@ -3085,8 +3126,12 @@ else
 	elif [ "$option1" = "SIGNAL_STRENGTH" ]; then
 		SignalStrengthChange "$option2";
 	elif [ "$option1" = "WIREGUARD_VPN" ]; then
-		if [ "$option2" = "" ]; then echo "Please enter VPN Wireguard conmnection"
+		if [ "$option2" = "" ]; then echo "Please enter VPN Wireguard connection"
 		else WireguardVPNstate "$option2" "$option3";
+		fi
+	elif [ "$option1" = "IPSEC_VPN" ]; then
+		if [ "$option2" = "" ]; then echo "Please enter VPN IPSec connection"
+		else IpSecVPNstate "$option2" "$option3";
 		fi
 	elif [ "$option1" = "MISC_LUA" ]; then
 		if [ "$option2" = "ReadLog" ] || [ "$option2" = "ResetLog" ]; then LUAmisc_Log
