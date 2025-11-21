@@ -981,6 +981,149 @@ ListAllDevicesUltraFast() {
 }
 
 ### ----------------------------------------------------------------------------------------------------- ###
+### ------------------------ FUNCTION DeviceBlock - Block internet access for a device ------------------ ###
+### ----------------------- Uses TR-064 X_AVM-DE_HostFilter service for device blocking ----------------- ###
+### ----------------------------------------------------------------------------------------------------- ###
+
+# Get device IP address by looking up device name in Fritz!Box
+getDeviceIP() {
+    local device_name="$1"
+    
+    # Check if device_name is already an IP address
+    if [[ "$device_name" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        echo "$device_name"
+        return 0
+    fi
+    
+    # Known devices (for quick lookup)
+    case "$device_name" in
+        "AlexaBad")
+            echo "192.168.178.125"
+            return 0
+            ;;
+    esac
+    
+    # Dynamic lookup using Fritz!Box device list
+    # Get SID for device lookup
+    if ! getSID; then
+        return 1
+    fi
+    
+    # Get network device data
+    netdev_response=$(wget -q -O - --post-data "xhr=1&sid=$SID&page=netDev&xhrId=all" "http://$BoxIP/data.lua" 2>/dev/null)
+    
+    if [ -z "$netdev_response" ]; then
+        return 1
+    fi
+    
+    # Look for device by name in active devices
+    if command -v jq &> /dev/null; then
+        # Use jq for precise JSON parsing
+        device_ip=$(echo "$netdev_response" | jq -r --arg name "$device_name" '.data.active[]? | select(.name == $name) | .ip // empty' 2>/dev/null)
+        
+        if [ -n "$device_ip" ] && [ "$device_ip" != "null" ]; then
+            echo "$device_ip"
+            # Logout SID
+            wget -O /dev/null "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null 2>&1
+            return 0
+        fi
+    fi
+    
+    # Fallback: grep-based search (less precise but works without jq)
+    if echo "$netdev_response" | grep -q "\"name\":\"$device_name\""; then
+        # Try to extract IP address from the JSON around the device name
+        device_line=$(echo "$netdev_response" | grep -A10 -B10 "\"name\":\"$device_name\"" | grep -o '"ip":"[^"]*"' | head -1 | cut -d'"' -f4)
+        
+        if [ -n "$device_line" ] && [[ "$device_line" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "$device_line"
+            # Logout SID  
+            wget -O /dev/null "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null 2>&1
+            return 0
+        fi
+    fi
+    
+    # Cleanup and return failure
+    wget -O /dev/null "http://$BoxIP/home/home.lua?sid=$SID&logout=1" &>/dev/null 2>&1
+    return 1
+}
+
+# Block/unblock device using TR-064 HostFilter service
+setDeviceWANAccess() {
+    local device_name="$1"
+    local ip_address="$2"
+    local disallow="$3"  # 1 = block, 0 = allow
+    local action_desc="$4"
+    
+    # TR-064 service details
+    local location="/upnp/control/x_hostfilter"
+    local uri="urn:dslforum-org:service:X_AVM-DE_HostFilter:1"
+    local action="DisallowWANAccessByIP"
+    local soap_action="$uri#$action"
+    
+    # Create SOAP envelope (exact format from working forum solution)
+    local soap_envelope="<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'><NewIPv4Address>$ip_address</NewIPv4Address><NewDisallow>$disallow</NewDisallow></u:$action></s:Body></s:Envelope>"
+    
+    # Send TR-064 request (using HTTPS and port 49443 as per forum solution)
+    response=$(curl -k -m 10 --anyauth -u "$BoxUSER:$BoxPW" \
+        "https://$BoxIP:49443$location" \
+        -H 'Content-Type: text/xml; charset="utf-8"' \
+        -H "SoapAction:$soap_action" \
+        -d "$soap_envelope" \
+        -s 2>/dev/null)
+    
+    # Check response
+    if [ $? -eq 0 ]; then
+        if [ -n "$response" ]; then
+            # Check for errors in response
+            if echo "$response" | grep -q "soap:Fault\|errorCode\|UPnPError"; then
+                echo "ERROR: TR-064 request failed"
+                echo "$response" | grep -A5 -B5 "errorCode\|faultstring\|UPnPError" 2>/dev/null || echo "$response"
+                return 1
+            else
+                echo "$action_desc successful for $device_name ($ip_address)"
+                return 0
+            fi
+        else
+            echo "$action_desc successful for $device_name ($ip_address)"
+            return 0
+        fi
+    else
+        echo "ERROR: TR-064 request failed (curl error)"
+        return 1
+    fi
+}
+
+# Control device internet access
+controlDeviceInternet() {
+    local device_name="$1"
+    local block_action="$2"  # "BLOCK" or "UNBLOCK"
+    
+    # Get device IP address
+    device_ip=$(getDeviceIP "$device_name")
+    if [ -z "$device_ip" ]; then
+        echo "ERROR: Could not determine IP address for device: $device_name"
+        echo "Available options:"
+        echo "  1. Check device name spelling (case-sensitive)"
+        echo "  2. Use IP address directly: ./fritzBoxShell.sh DEVICE$block_action \"192.168.178.XXX\""
+        echo "  3. Check Fritz!Box web interface for correct device name"
+        return 1
+    fi
+    
+    case "$block_action" in
+        "BLOCK")
+            setDeviceWANAccess "$device_name" "$device_ip" "1" "Internet blocking"
+            ;;
+        "UNBLOCK")
+            setDeviceWANAccess "$device_name" "$device_ip" "0" "Internet unblocking"
+            ;;
+        *)
+            echo "ERROR: Invalid action: $block_action"
+            return 1
+            ;;
+    esac
+}
+
+### ----------------------------------------------------------------------------------------------------- ###
 ### ---------------------- FUNCTION getProfileName - Helper to map profile ID to name ----------------- ###
 ### ----------------------------- Maps profile IDs to human-readable names ----------------------------- ###
 ### ----------------------------------------------------------------------------------------------------- ###
@@ -3019,6 +3162,8 @@ DisplayArguments() {
 	echo "| LISTDEVICES     |                           | List all known devices with name, MAC, IP, device ID and profile info       |"
 	echo "| LISTPROFILES    |                           | List available filter profiles for use with SETPROFILE                      |"
 	echo "| DEVICEPROFILES  |                           | Show devices with their current profile assignments                         |"
+	echo "| DEVICEBLOCK     | device name or IP address | Block internet access for a device using TR-064 HostFilter service          |"
+	echo "| DEVICEUNBLOCK   | device name or IP address | Unblock internet access for a device using TR-064 HostFilter service        |"
 	echo "|-----------------|---------------------------|-----------------------------------------------------------------------------|"
 	echo "| VERSION         |                           | Version of the fritzBoxShell.sh                                             |"
 	echo "| ACTIONS         |                           | Loop through all services and actions and make SOAP CALL                    |"
@@ -3164,6 +3309,10 @@ else
         WakeOnLAN "$option2";
 	elif [ "$option1" = "COUNT" ]; then
 		get_filtered_clients "$option2" "$option3";
+	elif [ "$option1" = "DEVICEBLOCK" ]; then
+		controlDeviceInternet "$option2" "BLOCK";
+	elif [ "$option1" = "DEVICEUNBLOCK" ]; then
+		controlDeviceInternet "$option2" "UNBLOCK";
 	else DisplayArguments
 	fi
 fi

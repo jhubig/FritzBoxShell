@@ -145,6 +145,8 @@ After the successful installation and setup following functions should be availa
 | LISTDEVICES | | List all known devices with name, MAC, IP, device ID and profile info |
 | LISTPROFILES | | List available filter profiles for use with SETPROFILE |
 | DEVICEPROFILES | | Show devices with their current profile assignments |
+| DEVICEBLOCK | \<device_name_or_IP> | Block internet access for a device using TR-064 HostFilter service |
+| DEVICEUNBLOCK | \<device_name_or_IP> | Unblock internet access for a device using TR-064 HostFilter service |
 | VERSION | \<N/A> | Version of the fritzBoxShell.sh |
 | ACTIONS | \<N/A> | Loop through all services and actions and make SOAP CALL|
 
